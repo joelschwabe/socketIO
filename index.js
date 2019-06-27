@@ -22,18 +22,21 @@ io.on('connection', function(socket){
 	socket.join(defaultRoom);
 	io.to(socket.id).emit('joined room', defaultRoom);
 	console.log('a user connected to default with socket:'+socket.id);
-	var message = "A new user has joined!";
-	io.to(defaultRoom).emit('chat message', newMsg(serverName, serverName,null,message));
-	io.emit('user list', userList); 
+	//var message = "A new user has joined!";
+	//io.to(defaultRoom).emit('chat message', newMsg(serverName, serverName,null,message)); 
+	
+	socket.on('reconnect', function(socket){
+		console.log("reconnected:");
+		console.log(socket);
+	});
 	
 	socket.on('disconnect', function(){
 		removeUser(socket.id);
 		socket.emit('user list', userList);
 		var message = "Goodbye " + getName(socket) + "!";
 		socket.broadcast.emit('chat message', newMsg(serverName, serverName,null,message));
-	},
-		function(){socket.emit('user list', userList)} 
-	);
+		io.emit('user list', userList);
+	});
 	
 	socket.on('debug server', function(){
 		console.log(io);
@@ -55,9 +58,8 @@ io.on('connection', function(socket){
 		}
 		
 		io.to(defaultRoom).emit('chat message', newMsg(serverName, serverName,null,message));
-	},
-		function(){socket.emit('user list', userList)} 
-	);
+		io.emit('user list', userList);
+	});
 	
 	socket.on('chat message', function(msg){
 		console.log('userid: ' + msg.id);
@@ -129,13 +131,22 @@ addUser = function(id, username){
 }
 
 removeUser = function(id){
+	console.log("remove: "+id);
+	var remove = false;
+	var removeIndex = -1;
 	for(var i = 0; i < userList.length; i++){
-		var removeIndex = -1;
+		console.log(userList[i].id);
 		if(userList[i].id == id){
 			removeIndex = i;
+			remove = true;
+			console.log("remove index=" + i);
 		}
 	}
-	userList.splice(i);	
+	if(remove){
+		console.log("current userlist:" + userList);
+		userList.splice(i,1);
+		console.log("after delete:" + userList);
+	}
 }
 
 newMsg = function(id,username,room,message){
@@ -151,7 +162,7 @@ newUser = function(id, name){
 	var usr = new Object();
 	usr.id = id;
 	usr.username = name;
-	console.log("new user object:" + usr.id + " " + usr.username);
+	//console.log("new user object:" + usr.id + " " + usr.username);
 	return usr;
 }
 

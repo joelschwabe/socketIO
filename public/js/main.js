@@ -190,6 +190,7 @@ checkIfVideo = function (url){
 
 updateUserList = function(users){
 	$('#usersList').remove();
+	$('#users').append($('<ul id="usersList" class="sideList"></ul>'));
 	for(var i=0; i < users.length; i++){
 		$('#usersList').append($('<li>').text(users[i].username));
 	}
