@@ -5,7 +5,13 @@ app.use(express.static('public'));
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 
-var maxUsersPerRoom = 2;
+const port = 3000;
+const maxUsersPerGameRoom = 4;
+const maxUsersPerChatRoom = 50;
+const defaultRoom = 'General';
+const serverRoom = 'Servers';
+const defaultName = 'anon';
+const serverName = 'Server';
 
 // Express Middleware for serving static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -13,10 +19,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', function(req, res) {
     res.redirect('index.html');
 });
-var defaultRoom = 'General';
-var serverRoom = 'Servers';
-var defaultName = 'anon';
-var serverName = 'Server';
+
 var userList = [];
 
 io.on('connection', function(socket){
@@ -25,9 +28,6 @@ io.on('connection', function(socket){
 	socket.join(defaultRoom);
 	io.to(socket.id).emit('joined room', defaultRoom);
 	console.log('a user connected to default with socket:'+socket.id);
-	
-	//var message = "A new user has joined!";
-	//io.to(defaultRoom).emit('chat message', newMsg(serverName, serverName,null,message)); 
 	
 	socket.on('reconnect', function(socket){
 		console.log("reconnected:");
@@ -46,35 +46,11 @@ io.on('connection', function(socket){
 		console.log(io);
 		console.log(socket);
 		console.log(socket.adapter.rooms);
-
+		console.log(userList);
 	});
 	
 	socket.on('assign name', function(msg){
-		for(var i=0; i < userList.length; i++){
-			if(userList[i].username == msg.username){
-				var index = 1;
-				if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
-					var isNumber = true;
-					while(isNumber){
-						if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
-							//is a letter
-							isNumber = false;
-							var numberName = msg.username.substr(msg.username.length - index, msg.username.length);
-							var stringName =  msg.username.substr(0, msg.username.length - index);
-							msg.username = stringName + (parseInt(numberName) + 1);
-							console.log(index);
-						}else{
-							//is a number
-							index++;
-							console.log(index);
-						}
-					}
-				}else{
-					msg.username = msg.username + "1";
-				}
-			}
-		}
-		
+		msg = checkForDupName(msg);
 		var oldName = socket.username;
 		socket.username = msg.username;
 		addUser(socket.id, socket.username);
@@ -92,9 +68,9 @@ io.on('connection', function(socket){
 	
 	socket.on('chat message', function(msg){
 		console.log('userid: ' + msg.id);
-		console.log(' username: ' + msg.username);
-		console.log('  room: ' + msg.room);
-		console.log('   message: ' + msg.msg);
+		console.log(' -username: ' + msg.username);
+		console.log('  -room: ' + msg.room);
+		console.log('   -message: ' + msg.msg);
 		io.to(msg.room).emit('chat message', msg);
 	});
 	
@@ -103,7 +79,7 @@ io.on('connection', function(socket){
 		io.to(to).emit('chat message', msg);
 	});
 	
-	socket.on('join room', function(room, fromRoom, pword){
+	socket.on('join room', function(room, fromRoom, pword, type){
 		if(socket.adapter.rooms.hasOwnProperty(room)){
 			console.log("room exists");
 			if(socket.adapter.rooms[room].length < maxUsersPerRoom){
@@ -152,6 +128,9 @@ io.on('connection', function(socket){
 		if(room == defaultRoom){
 			var message = 'Cannot leave ' + room;
 			io.to(socket.id).emit('chat message', newMsg(serverName, serverName,room,message));
+		}else if(room == serverRoom){
+			var message = 'Cannot leave ' + room;
+			io.to(socket.id).emit('chat message', newMsg(serverName, serverName,room,message));
 		}else{
 			io.to(socket.id).emit('left room', room);
 			socket.leave(room);
@@ -162,6 +141,34 @@ io.on('connection', function(socket){
 		}
 	});
 });
+
+checkForDupName = function (msg){
+	for(var i=0; i < userList.length; i++){
+		if(userList[i].username == msg.username){
+			var index = 1;
+			if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
+				var isNumber = true;
+				while(isNumber){
+					if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
+						//is a letter
+						isNumber = false;
+						var numberName = msg.username.substr(msg.username.length - index, msg.username.length);
+						var stringName =  msg.username.substr(0, msg.username.length - index);
+						msg.username = stringName + (parseInt(numberName) + 1);
+						//console.log(index);
+					}else{
+						//is a number
+						index++;
+						//console.log(index);
+					}
+				}
+			}else{
+				msg.username = msg.username + "1";
+			}
+		}
+	}
+	return msg;
+}
 
 addUser = function(id, username){
 	var newUsr = newUser(id, username);
@@ -191,19 +198,14 @@ removeUser = function(id){
 		if(userList[i].id == id){
 			removeIndex = i;
 			remove = true;
-			console.log("remove index=" + i);
+			//console.log("remove index=" + i);
 		}
 	}
 	if(remove){
-		console.log("current userlist:" + userList);
+		//console.log("current userlist:" + userList);
 		userList.splice(i,1);
-		console.log("after delete:" + userList);
+		//console.log("after delete:" + userList);
 	}
-}
-
-checkStringReverseForInts = function(string){
-	
-	
 }
 
 newMsg = function(id,username,room,message){
@@ -219,7 +221,6 @@ newUser = function(id, name){
 	var usr = new Object();
 	usr.id = id;
 	usr.username = name;
-	//console.log("new user object:" + usr.id + " " + usr.username);
 	return usr;
 }
 
@@ -230,6 +231,7 @@ getName = function(socket){
 		return defaultName;
 	}
 }
-http.listen(3000, function(){
-	console.log('listening on *:3000');
+
+http.listen(port, function(){
+	console.log('listening on *:'+port);
 });
