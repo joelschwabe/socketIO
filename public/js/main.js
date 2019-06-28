@@ -1,14 +1,16 @@
 const defaultRoom = 'General';
 var currentRoom = defaultRoom;
-var roomType = {
+const roomType = {
 		game: 'game',
 		chat: 'chat',
-		dm: 'dm'
+		dm: 'dm',
+		server: 'server'
 	};
 var currentRoomType = roomType.chat;
 $('#main').hide();
 var name = '';
 var userList = [];
+var roomList = [];
 
 connect = function(name){
 	var socket = io();
@@ -20,30 +22,28 @@ connect = function(name){
 			checkCommand(inputval.substring(1, inputval.length)); //trim off /
 			return false;
 		}
-		socket.emit('chat message', newMsg(socket.id, socket.username, currentRoom, inputval));
+		socket.emit('chat_message', newMsg(socket.id, socket.username, currentRoom, inputval));
 		if(currentRoomType == roomType.dm){ //dm's are only sent to the user dm'd, so we need to keep track of the messages we sent
 			$('#'+currentRoom+'_messages').append($('<li>').text(socket.username + ":" + inputval));
 		}
 		$('#m').val('');
+		focusCursor('m');
 		return false;
 	});
 	
-	socket.on('joined room', function(room){
-		console.log("Joined:" + room);
-		
+	socket.on('joined_room', function(room){
+		console.log("Joined:" + room.name);
+		roomList.push(room);
 		var oldRoom = currentRoom;
-		currentRoom = room;
-		createNewRoom(room, room);
+		currentRoom = room.name;
+		createNewRoom(room.name, room.name, room.type);
+		currentRoomType = roomType[room.type];
+		console.log("Room type:" + currentRoomType);
 		toggleActiveRooms(oldRoom,currentRoom);
-		$('#'+room+'_messages').append($('<li>').text('Joined Room:'+room).css('color','blue'))
-	});
-	
-	socket.on('room updated', function(room){
-		var users = room.sockets;
-		
+		$('#'+room.name+'_messages').append($('<li>').text('Joined Room:'+room.name).css('color','blue'))
 	});
 
-	socket.on('chat message', function(msg){
+	socket.on('chat_message', function(msg){
 		var mediaChk = document.createElement('a');
 		mediaChk.href = msg.msg;
 		var imgChkValid = checkIfImage(mediaChk);
@@ -53,11 +53,11 @@ connect = function(name){
 			currentRoomType = roomType.chat;
 		}
 
-		if(msg.room == socket.id){ //private message, needs the id to be the room
+		if(msg.room == socket.id){ //private_message, needs the id to be the room
 			if(!roomExists(msg.id)){
 				var oldRoom = currentRoom;
 				currentRoom = msg.id;
-				createNewRoom(msg.id, msg.username);
+				createNewRoom(msg.id, msg.username, roomType.dm);
 				toggleActiveRooms(oldRoom,currentRoom);
 			}
 			msg.room = msg.id;
@@ -74,8 +74,10 @@ connect = function(name){
 		window.scrollTo(0,document.body.scrollHeight);
 	});
 	
-	socket.on('left room', function(room){
+	socket.on('left_room', function(room){
 		currentRoom = defaultRoom;
+		toggleActiveRooms(room,currentRoom);
+		removeRoom(room);
 		$('#'+room+ '_room').remove();
 		$('#'+room+ '_messages').remove();
 		$('#' +currentRoom+ '_messages').show();
@@ -83,14 +85,46 @@ connect = function(name){
 		alignMessageToBottom();
 	});
 	
-	socket.on('user list', function(usrList){
+	removeRoom = function(name){
+		console.log("remove room: "+name);
+		var remove = false;
+		var removeIndex = -1;
+		for(var i = 0; i < roomList.length; i++){
+			if(roomList[i].name == name){
+				removeIndex = i;
+				remove = true;
+			}
+		}
+		if(remove){
+			roomList.splice(i,1);
+		}
+	}
+	
+	socket.on('user list', function(usrList, room){ //room name 
+		console.log("updating userlist:" + usrList);
 		userList = usrList;
-		console.log(userList);
 		updateUserList(userList);
 	});
 	
 	checkCommand = function (inputval){
 		var inputvalArgs = inputval.split(' ');
+		join = function(inputAr, type){
+			if(inputAr.length < 2){
+				invalidCommand();
+				return;
+			}
+			if(inputAr.length == 2){
+				socket.emit('join_room', inputAr[1],currentRoom);
+			}else{
+				var pword = '';
+				for(var i = 2; i < inputAr.length; i++){
+					pword+=inputAr[i];
+				}
+				socket.emit('join_room', inputAr[1],currentRoom, pword, type);
+			}
+			$('#m').val('');
+			focusCursor('m');
+		}
 		
 		if(inputvalArgs[0]=="joinchat"){
 			join(inputvalArgs, 'chat');
@@ -103,8 +137,9 @@ connect = function(name){
 				invalidCommand();
 				return;
 			}
-			socket.emit('leave room', inputvalArgs[1]);
+			socket.emit('leave_room', inputvalArgs[1]);
 			$('#m').val('');
+			focusCursor('m');
 			
 		}else if(inputvalArgs[0]=="dm"){
 			if(inputvalArgs.length < 2){
@@ -121,10 +156,10 @@ connect = function(name){
 				if(!roomExists(userId)){
 					var oldRoom = currentRoom;
 					currentRoom = userId;
-					createNewRoom(userId, toUserName);
+					createNewRoom(userId, toUserName, roomType.dm);
 					toggleActiveRooms(oldRoom,currentRoom);
 				}
-				socket.emit('chat message', newMsg(socket.id, socket.username, userId, message));
+				socket.emit('chat_message', newMsg(socket.id, socket.username, userId, message));
 				$('#'+currentRoom+'_messages').append($('<li>').text(socket.username + ":" + message));
 				currentRoomType = roomType.dm;
 			}else{
@@ -132,6 +167,7 @@ connect = function(name){
 			}
 			alignMessageToBottom();
 			$('#m').val('');
+			focusCursor('m');
 			
 		}else if(inputvalArgs[0]=="name"){
 			if(inputvalArgs.length < 2){
@@ -143,49 +179,34 @@ connect = function(name){
 				name+=inputvalArgs[i]
 			}	
 			socket.username = name;
-			socket.emit('assign name', newMsg(socket.id, socket.username, currentRoom, name));
+			socket.emit('assign_name', newMsg(socket.id, socket.username, currentRoom, name));
 			$('#m').val('');
+			focusCursor('m');
 			
 		}else if(inputvalArgs[0]=="debug"){
 			socket.emit('debug server');
-			$('#'+currentRoom+'_messages').append($('<li>').append(JSON.stringify(socket))).css('color','purple');
-			alignMessageToBottom();
 			console.log(socket);
 			$('#m').val('');
+			focusCursor('m');
 			
 		}else if(inputvalArgs[0]=="help"){
 			$('#'+currentRoom+'_messages').append($('<li>').append(getHelp()).css('color','purple'));
 			alignMessageToBottom();
 			$('#m').val('');
-								
+			focusCursor('m');	
+			
 		}else{
 			$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
 			alignMessageToBottom();
 		}
 		
-		join = function(inputAr, type){
-			if(inputAr.length < 2){
-				invalidCommand();
-				return;
-			}
-			if(inputAr.length == 2){
-				socket.emit('join room', inputAr[1],currentRoom);
-			}else{
-				var pword = '';
-				for(var i = 2; i < inputAr.length; i++){
-					pword+=inputAr[i];
-				}
-				socket.emit('join room', inputAr[1],currentRoom, pword, type);
-			}
-			$('#m').val('');
-		}
 	}
 	invalidCommand = function(){
 		$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
 	}
 	
 	socket.username = name;
-	socket.emit('assign name', newMsg(socket.id, socket.username, currentRoom, name));
+	socket.emit('assign_name', newMsg(socket.id, socket.username, currentRoom, name));
 	console.log("First name change:" + socket.id + "->" + name);
 }
 
@@ -201,10 +222,18 @@ roomExists= function(id){
 	return $('#'+id+'_room').length
 }
 
-createNewRoom = function (room, roomDisplayName){
-	$('#roomsList').append($('<li id="' +room+ '_room" onclick="chooseRoom(\''+room+'\')" >').text(roomDisplayName));
-	$('#messages').append($('<ul id="'+room+'_messages"></ul>'));
+createNewRoom = function (room, roomDisplayName, type){
+	$('#roomsList').append($('<li id="' +room+ '_room" class="'+type+'" onclick="chooseRoom(\''+room+'\')" >').text(roomDisplayName));
+	$('#messages').append($('<ul id="'+room+'_messages" class="'+type+'"></ul>'));
 }	
+
+generateGameRoomName = function(){
+	var name = '';
+	for(var i=0; i < 6; i++){
+		name += String.fromCharCode(Math.floor((Math.random()*26)+65)); //A -> Z code
+	}
+	return name;
+}
 
 toggleActiveRooms = function (oldRoom,newRoom){
 	$('#' +newRoom+ '_room').addClass('activeRoom');
@@ -286,7 +315,7 @@ checkIfVideo = function (url){
 
 updateUserList = function(users){
 	$('#usersList').remove();
-	$('#users').append($('<ul id="usersList" class="sideList"></ul>'));
+	$('#users').append($('<ul id="usersList" class="sideList"></ul>'));//recreate after destroying
 	for(var i=0; i < users.length; i++){
 		$('#usersList').append($('<li>').text(users[i].username));
 	}
@@ -329,13 +358,6 @@ newMsg = function(id,username,room,message){
 	return msg
 }
 
-start = function(){
-	name = $('#nickname').val();
-	$('#nameform').hide();
-	$('#main').show();
-	connect(name);
-}
-
 $( "#nickname" ).keydown(function( event ) {
 	if ( event.which == 13 ) {
 		start();
@@ -372,4 +394,18 @@ getHelp = function(){
 	span.innerText = " /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).";
 	helpHtml.appendChild(span);
 	return helpHtml;
+}
+
+focusCursor = function(id){
+	$('#'+id).focus;
+	$('#'+id).setActive;
+	$('#'+id).select();
+}
+focusCursor('nickname');
+
+start = function(){
+	name = $('#nickname').val();
+	$('#nameform').hide();
+	$('#main').show();
+	connect(name);
 }

@@ -12,7 +12,12 @@ const defaultRoom = 'General';
 const serverRoom = 'Servers';
 const defaultName = 'anon';
 const serverName = 'Server';
-
+const roomType = {
+		game: 'game',
+		chat: 'chat',
+		dm: 'dm',
+		server: 'server'
+	};
 // Express Middleware for serving static files
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -24,9 +29,13 @@ var userList = [];
 
 io.on('connection', function(socket){
 	socket.join(serverRoom);
-	io.to(socket.id).emit('joined room', serverRoom);
+	socket.adapter.rooms[serverRoom].type = roomType.server;
+	socket.adapter.rooms[serverRoom].name = serverRoom;
+	io.to(socket.id).emit('joined_room', socket.adapter.rooms[serverRoom]);
 	socket.join(defaultRoom);
-	io.to(socket.id).emit('joined room', defaultRoom);
+	socket.adapter.rooms[defaultRoom].type = roomType.chat;
+	socket.adapter.rooms[defaultRoom].name = defaultRoom;
+	io.to(socket.id).emit('joined_room', socket.adapter.rooms[defaultRoom]);
 	console.log('a user connected to default with socket:'+socket.id);
 	
 	socket.on('reconnect', function(socket){
@@ -35,11 +44,14 @@ io.on('connection', function(socket){
 	});
 	
 	socket.on('disconnect', function(){
-		removeUser(socket.id);
-		socket.emit('user list', userList);
-		var message = "Goodbye " + getName(socket) + "!";
-		socket.broadcast.emit('chat message', newMsg(serverName, serverName,null,message));
-		io.emit('user list', userList);
+		var userName = socket.username;
+		if(userName){
+			removeUser(socket.id);
+			//socket.emit('user list', userList);
+			var message = "Goodbye " + getName(socket) + "!";
+			socket.broadcast.emit('chat_message', newMsg(serverName, serverName,null,message));
+			io.emit('user list', userList);
+		}
 	});
 	
 	socket.on('debug server', function(){
@@ -49,7 +61,7 @@ io.on('connection', function(socket){
 		console.log(userList);
 	});
 	
-	socket.on('assign name', function(msg){
+	socket.on('assign_name', function(msg){
 		msg = checkForDupName(msg);
 		var oldName = socket.username;
 		socket.username = msg.username;
@@ -62,81 +74,98 @@ io.on('connection', function(socket){
 			message = oldName + " now identifies as '" + getName(socket) +"'!";
 		}
 		
-		io.to(defaultRoom).emit('chat message', newMsg(serverName, serverName,null,message));
-		io.emit('user list', userList);
+		io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
+		io.emit('user list', userList, msg.room);
 	});
 	
-	socket.on('chat message', function(msg){
+	socket.on('chat_message', function(msg){
 		console.log('userid: ' + msg.id);
 		console.log(' -username: ' + msg.username);
 		console.log('  -room: ' + msg.room);
 		console.log('   -message: ' + msg.msg);
-		io.to(msg.room).emit('chat message', msg);
+		io.to(msg.room).emit('chat_message', msg);
 	});
 	
-	socket.on('private message', function(to,msg){
-		console.log('message: ' + msg);
-		io.to(to).emit('chat message', msg);
-	});
-	
-	socket.on('join room', function(room, fromRoom, pword, type){
+	socket.on('join_room', function(room, fromRoom, pword, type){
+		var maxUsersPerRoom = 0;
+		if(type == 'game'){
+			maxUsersPerRoom = maxUsersPerGameRoom;
+		}else{
+			maxUsersPerRoom = maxUsersPerChatRoom;
+		}
 		if(socket.adapter.rooms.hasOwnProperty(room)){
 			console.log("room exists");
-			if(socket.adapter.rooms[room].length < maxUsersPerRoom){
-				if(socket.adapter.rooms[room].hasOwnProperty('pword')){ //it's private
-					if(pword == socket.adapter.rooms[room].pword){
-						console.log("private room joined");
+			var userInRoom = false;
+			for(var i=0; i< socket.adapter.rooms[room].length; i++){
+				if(socket.adapter.rooms[room].sockets.hasOwnProperty(socket.id)){
+					userInRoom = true;
+				}
+			}
+			if(!userInRoom){
+				var thisRoom = socket.adapter.rooms[room];
+				if(thisRoom.length < maxUsersPerRoom){
+					if(thisRoom.hasOwnProperty('pword')){ //it's private
+						if(pword == thisRoom.pword){
+							console.log("private " +type+ " room joined");
+							socket.join(room);
+							var message = getName(socket) + " joined " + room;
+							io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
+							io.to(socket.id).emit('joined_room', thisRoom);
+						}else{
+							console.log("private " +type+ " room: access denied");
+							var message = "Invalid room password. Access Denied.";
+							io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
+						}						
+					}else{ //it's public
+						console.log("public " +type+ " room joined");
 						socket.join(room);
 						var message = getName(socket) + " joined " + room;
-						io.to(room).emit('chat message', newMsg(serverName, serverName,room,message));
-						io.to(socket.id).emit('joined room', room);
-					}else{
-						console.log("private room: access denied");
-						var message = "Invalid room password. Access Denied.";
-						io.to(socket.id).emit('chat message', newMsg(serverName, serverName,fromRoom,message));
-					}						
-				}else{ //it's public
-					console.log("public room joined");
-					socket.join(room);
-					var message = getName(socket) + " joined " + room;
-					io.to(room).emit('chat message', newMsg(serverName, serverName,room,message));
-					io.to(socket.id).emit('joined room', room);
+						io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
+						io.to(socket.id).emit('joined_room', thisRoom);
+					}
+				}else{
+					console.log("room full");
+					var message = "Room " + room + " is full!";
+					io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 				}
 			}else{
-				console.log("room full");
-				var message = "Room " + room + " is full!";
-				io.to(socket.id).emit('chat message', newMsg(serverName, serverName,fromRoom,message));
+				var message = "Already in room...";
+				io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 			}
 		}else{
 			if(!pword){
-				console.log("created public room");
+				console.log("created public " +type+ " room");
 				socket.join(room);
-				io.to(fromRoom).emit('chat message', getName(socket) + " created " + room);
-				io.to(socket.id).emit('joined room', room);
+				socket.adapter.rooms[room].type = type;
+				socket.adapter.rooms[room].name = room;
+				io.to(fromRoom).emit('chat_message', getName(socket) + " created " + type + " " + room);
+				io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
 			}else{
-				console.log("created private room:" + pword);
+				console.log("created private " +type+ " room:" + pword);
 				socket.join(room);
 				socket.adapter.rooms[room].pword = pword;
-				io.to(socket.id).emit('joined room', room);
+				socket.adapter.rooms[room].type = type;
+				socket.adapter.rooms[room].name = room;
+				io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
 				
 			}
 		}
 		console.log(socket.adapter.rooms);
 	});
 	
-	socket.on('leave room', function(room){
+	socket.on('leave_room', function(room){
 		if(room == defaultRoom){
 			var message = 'Cannot leave ' + room;
-			io.to(socket.id).emit('chat message', newMsg(serverName, serverName,room,message));
+			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,room,message));
 		}else if(room == serverRoom){
 			var message = 'Cannot leave ' + room;
-			io.to(socket.id).emit('chat message', newMsg(serverName, serverName,room,message));
+			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,room,message));
 		}else{
-			io.to(socket.id).emit('left room', room);
+			io.to(socket.id).emit('left_room', room);
 			socket.leave(room);
-			console.log('a user left room:'+ room);
+			console.log('a user left_room:'+ room);
 			var message = getName(socket) + " left " + room;
-			io.to(room).emit('chat message', newMsg(serverName, serverName,room,message));
+			io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
 			console.log(socket.adapter.rooms);
 		}
 	});
