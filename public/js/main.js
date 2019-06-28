@@ -55,8 +55,9 @@ connect = function(name){
 	
 	socket.on('left room', function(room){
 		currentRoom = defaultRoom;
-		$('#'+room+ '_room').remove;
-		$('#'+room+ '_messages').remove;
+		$('#'+room+ '_room').remove();
+		$('#'+room+ '_messages').remove();
+		$('#' +currentRoom+ '_messages').show();
 		$('#'+currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));
 	});
 	
@@ -70,20 +71,48 @@ connect = function(name){
 		var inputvalArgs = inputval.split(' ');
 		
 		if(inputvalArgs[0]=="join"){
-			socket.emit('join room', inputvalArgs[1]);
+			if(inputvalArgs.length < 2){
+				invalidCommand();
+				return;
+			}
+			if(inputvalArgs.length == 2){
+				socket.emit('join room', inputvalArgs[1],currentRoom);
+			}else{
+				var pword = '';
+				for(var i = 2; i < inputvalArgs.length; i++){
+					pword+=inputvalArgs[i];
+				}
+				socket.emit('join room', inputvalArgs[1],currentRoom, pword);
+			}
 			$('#m').val('');
 			
 		}else if(inputvalArgs[0]=="leave"){
+			if(inputvalArgs.length < 2){
+				invalidCommand();
+				return;
+			}
 			socket.emit('leave room', inputvalArgs[1]);
 			$('#m').val('');
 			
 		}else if(inputvalArgs[0]=="dm"){
+			if(inputvalArgs.length < 2){
+				invalidCommand();
+				return;
+			}			
 			socket.emit('private message', inputval);
 			$('#m').val('');
 			
 		}else if(inputvalArgs[0]=="name"){
-			socket.username = inputvalArgs[1];
-			socket.emit('assign name', newMsg(socket.id, socket.username, currentRoom, inputvalArgs[1]));
+			if(inputvalArgs.length < 2){
+				invalidCommand();
+				return;
+			}
+			var name = '';
+			for(var i = 1; i < inputvalArgs.length; i++){
+				name+=inputvalArgs[i]
+			}	
+			socket.username = name;
+			socket.emit('assign name', newMsg(socket.id, socket.username, currentRoom, name));
 			$('#m').val('');
 			
 		}else if(inputvalArgs[0]=="debug"){
@@ -99,6 +128,10 @@ connect = function(name){
 			$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
 		}
 	}
+	invalidCommand = function(){
+		$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
+	}
+	
 	socket.username = name;
 	socket.emit('assign name', newMsg(socket.id, socket.username, currentRoom, name));
 	console.log("First name change:" + socket.id + "->" + name);
