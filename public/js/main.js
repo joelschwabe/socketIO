@@ -8,13 +8,14 @@ const roomType = {
 		server: 'server'
 	};
 var currentRoomType = roomType.chat;
-$('#main').hide();
+$('#main').hide(); //change main to display: none ??
 var name = '';
 var userList = [];
 var roomList = [];
+var socket;
 
 connect = function(name){
-	var socket = io();
+	socket = io();
 	socket.emit('join_room', serverRoom,serverRoom, roomType.server);
 	socket.emit('join_room', defaultRoom,currentRoom, roomType.chat);
 	$('#messageform').submit(function(e){
@@ -32,7 +33,7 @@ connect = function(name){
 		focusCursor('m');
 		return false;
 	});
-	
+
 	socket.on('joined_room', function(room){
 		console.log("Joined:" + room.name);
 		roomList.push(room);
@@ -46,6 +47,7 @@ connect = function(name){
 		if(room.name == defaultRoom){
 			$('#'+room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue'))
 		}
+		focusCursor('m');
 	});
 
 	socket.on('chat_message', function(msg){
@@ -53,11 +55,11 @@ connect = function(name){
 		mediaChk.href = msg.msg;
 		var imgChkValid = checkIfImage(mediaChk);
 		var checkVideoValid = checkIfVideo(mediaChk);
+		var checkAudioValid = checkIfAudio(mediaChk);
 		if(msg.room == null){
 			msg.room = defaultRoom;
 			currentRoomType = roomType.chat;
 		}
-
 		if(msg.room == socket.id){ //private_message, needs the id to be the room
 			if(!roomExists(msg.id)){
 				var oldRoom = currentRoom;
@@ -78,9 +80,9 @@ connect = function(name){
 		}else{
 			appendText(msg);
 		}
-		window.scrollTo(0,document.body.scrollHeight);
+		alignMessageToBottom();
 	});
-	
+
 	socket.on('left_room', function(room){
 		currentRoom = defaultRoom;
 		toggleActiveRooms(room,currentRoom);
@@ -91,7 +93,7 @@ connect = function(name){
 		$('#'+currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));
 		alignMessageToBottom();
 	});
-	
+
 	removeRoom = function(name){
 		console.log("remove room: "+name);
 		var remove = false;
@@ -106,13 +108,15 @@ connect = function(name){
 			roomList.splice(i,1);
 		}
 	}
-	
-	socket.on('user list', function(usrList, room){ //room name 
+
+	socket.on('user list', function(usrList, room){ //room name
 		console.log("updating userlist:" + usrList);
 		userList = usrList;
 		updateUserList(userList);
 	});
-	
+
+	socket.on('drawing', onDrawingEvent);
+
 	checkCommand = function (inputval){
 		var inputvalArgs = inputval.split(' ');
 		join = function(inputAr, type){
@@ -132,13 +136,13 @@ connect = function(name){
 			$('#m').val('');
 			focusCursor('m');
 		}
-		
+
 		if(inputvalArgs[0]=="joinchat"){
 			join(inputvalArgs, roomType.chat);
-			
+
 		}else if(inputvalArgs[0]=="joingame"){
 			join(inputvalArgs, roomType.game);
-			
+
 		}else if(inputvalArgs[0]=="leave"){
 			if(inputvalArgs.length < 2){
 				invalidCommand();
@@ -147,7 +151,7 @@ connect = function(name){
 			socket.emit('leave_room', inputvalArgs[1]);
 			$('#m').val('');
 			focusCursor('m');
-			
+
 		}else if(inputvalArgs[0]=="dm"){
 			if(inputvalArgs.length < 2){
 				invalidCommand();
@@ -175,7 +179,7 @@ connect = function(name){
 			alignMessageToBottom();
 			$('#m').val('');
 			focusCursor('m');
-			
+
 		}else if(inputvalArgs[0]=="name"){
 			if(inputvalArgs.length < 2){
 				invalidCommand();
@@ -184,34 +188,34 @@ connect = function(name){
 			var name = '';
 			for(var i = 1; i < inputvalArgs.length; i++){
 				name+=inputvalArgs[i]
-			}	
+			}
 			socket.username = name;
 			socket.emit('assign_name', newMsg(socket.id, socket.username, currentRoom, name));
 			$('#m').val('');
 			focusCursor('m');
-			
+
 		}else if(inputvalArgs[0]=="debug"){
 			socket.emit('debug server');
 			console.log(socket);
 			$('#m').val('');
 			focusCursor('m');
-			
+
 		}else if(inputvalArgs[0]=="help"){
 			$('#'+currentRoom+'_messages').append($('<li>').append(getHelp()).css('color','purple'));
 			alignMessageToBottom();
 			$('#m').val('');
-			focusCursor('m');	
-			
+			focusCursor('m');
+
 		}else{
 			$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
 			alignMessageToBottom();
 		}
-		
+
 	}
 	invalidCommand = function(){
 		$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
 	}
-	
+
 	socket.username = name;
 	socket.emit('assign_name', newMsg(socket.id, socket.username, currentRoom, name));
 	console.log("First name change:" + socket.id + "->" + name);
@@ -230,9 +234,33 @@ roomExists= function(id){
 }
 
 createNewRoom = function (room, roomDisplayName, type){
-	$('#roomsList').append($('<li id="' +room+ '_room" class="'+type+'" onclick="chooseRoom(\''+room+'\')" >').text(roomDisplayName));
-	$('#messages').append($('<ul id="'+room+'_messages" class="'+type+'"></ul>'));
-}	
+	$('#roomsList').append($('<li id="' +room+ '_room" class="'+type+'_class" onclick="chooseRoom(\''+room+'\')" >').text(roomDisplayName));
+	
+	if(type==roomType.game){
+		$('#messages').append($('<canvas class="'+type+'_class" id="'+room+'_canvas"></canvas>'));
+		$('#messages').append($('<ul id="'+room+'_messages" class="'+type+'_message"></ul>'));
+		canvas = document.getElementById(room+'_canvas');
+		context = canvas.getContext('2d');
+		canvas.addEventListener('mousedown', onMouseDown, false);
+		canvas.addEventListener('mouseup', onMouseUp, false);
+		canvas.addEventListener('mouseout', onMouseUp, false);
+		canvas.addEventListener('mousemove', throttle(onMouseMove, 5), false);
+
+		//Touch support for mobile devices
+		canvas.addEventListener('touchstart', onMouseDown, false);
+		canvas.addEventListener('touchend', onMouseUp, false);
+		canvas.addEventListener('touchcancel', onMouseUp, false);
+		canvas.addEventListener('touchmove', throttle(onMouseMove, 5), false);
+		onResize();
+
+		context.fillStyle = "#FF0000";
+		context.fillRect(0, 0, canvas.width, canvas.height);
+
+	}else{
+		$('#messages').append($('<ul id="'+room+'_messages" class="'+type+'_class"></ul>'));
+	}
+}
+
 
 generateGameRoomName = function(){
 	var name = '';
@@ -243,15 +271,22 @@ generateGameRoomName = function(){
 }
 
 toggleActiveRooms = function (oldRoom,newRoom){
+	for(var i = 0; i < roomList.length; i++){
+		if(newRoom == roomList[i].name){
+			currentRoomType = roomList[i].type;
+		}
+	}
 	$('#' +newRoom+ '_room').addClass('activeRoom');
 	$('#' +newRoom+ '_room').removeClass('inactiveRoom');
 	$('#' +newRoom+ '_messages').show();
+	$('#' +newRoom+ '_canvas').show();
 	if(oldRoom != newRoom){
 		$('#' +oldRoom+ '_room').removeClass('activeRoom');
 		$('#' +oldRoom+ '_room').addClass('inactiveRoom');
 		$('#' +oldRoom+ '_messages').hide();
+		$('#' +oldRoom+ '_canvas').hide();
 	}
-}	
+}
 
 appendImage = function(msg){
 	//var output = formatImageOutput(msg);
@@ -279,7 +314,7 @@ appendAudio = function (msg){
 
 
 }
-	
+
 checkIfImage = function (url){
 	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
 			var pathNameExt = url.pathname;
@@ -292,9 +327,9 @@ checkIfImage = function (url){
 					return true;
 				}else if(pathNameExt.indexOf('.bmp')> -1){
 					return true;
-				}else if(pathNameExt.indexOf('.tiff')> -1){				
+				}else if(pathNameExt.indexOf('.tiff')> -1){
 					return true;
-				}else if(pathNameExt.indexOf('.gif')> -1){		
+				}else if(pathNameExt.indexOf('.gif')> -1){
 					return true;
 				}else{
 					return false;
@@ -309,7 +344,7 @@ checkIfAudio = function (url){
 		var hostNameExt = url.hostname;
 		if(hostNameExt){
 			if(hostNameExt == "bandcamp.com"){
-		
+
 			}else{
 				return false;
 			}
@@ -390,7 +425,14 @@ formatVideoOutput = function(msg){
 }
 
 alignMessageToBottom = function(){
-	window.scrollTo(0,document.body.scrollHeight);
+	var scrollm;
+	if(currentRoomType == roomType.game){
+		scrollm = document.getElementById(currentRoom+'_messages');
+	}else{
+		scrollm = document.getElementById('messages');
+			
+	}
+	scrollm.scrollTo(0,scrollm.scrollHeight)
 }
 
 getName = function(msg){
@@ -435,11 +477,11 @@ getHelp = function(){
 	span = document.createElement('span');
 	span.innerText = "/joingame : Join a game room by entering a room name after the command.";
 	helpHtml.appendChild(span);
-	helpHtml.appendChild(document.createElement('br'));	
+	helpHtml.appendChild(document.createElement('br'));
 	span = document.createElement('span');
 	span.innerText = "** Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.";
 	helpHtml.appendChild(span);
-	helpHtml.appendChild(document.createElement('br'));	
+	helpHtml.appendChild(document.createElement('br'));
 	span = document.createElement('span');
 	span.innerText = " /leave : Leave any room by entering the room name.";
 	helpHtml.appendChild(span);

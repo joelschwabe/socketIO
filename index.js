@@ -28,21 +28,14 @@ app.get('/', function(req, res) {
 var userList = [];
 
 io.on('connection', function(socket){
-/* 	socket.join(serverRoom);
-	socket.adapter.rooms[serverRoom].type = roomType.server;
-	socket.adapter.rooms[serverRoom].name = serverRoom;
-	io.to(socket.id).emit('joined_room', socket.adapter.rooms[serverRoom]);
-	socket.join(defaultRoom);
-	socket.adapter.rooms[defaultRoom].type = roomType.chat;
-	socket.adapter.rooms[defaultRoom].name = defaultRoom;
-	io.to(socket.id).emit('joined_room', socket.adapter.rooms[defaultRoom]); */
+
 	console.log('a user connected to default with socket:'+socket.id);
-	
+
 	socket.on('reconnect', function(socket){
 		console.log("reconnected:");
 		console.log(socket);
 	});
-	
+
 	socket.on('disconnect', function(){
 		var userName = socket.username;
 		console.log("disconnected:" + userName);
@@ -54,14 +47,19 @@ io.on('connection', function(socket){
 			io.emit('user list', userList);
 		}
 	});
-	
+
+	socket.on('drawing', function(msg){
+		console.log(msg);
+		io.to(msg.room).emit('drawing', msg);
+	});
+
 	socket.on('debug server', function(){
 		console.log(io);
 		console.log(socket);
 		console.log(socket.adapter.rooms);
 		console.log(userList);
 	});
-	
+
 	socket.on('assign_name', function(msg){
 		msg = checkForDupName(msg);
 		var oldName = socket.username;
@@ -74,11 +72,11 @@ io.on('connection', function(socket){
 			console.log('a user changed their name:'+ msg.id + ": " + msg.username + ":(room: " + msg.room + ")");
 			message = oldName + " now identifies as '" + getName(socket) +"'!";
 		}
-		
+
 		io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
 		io.emit('user list', userList, msg.room);
 	});
-	
+
 	socket.on('chat_message', function(msg){
 		console.log('userid: ' + msg.id);
 		console.log(' -username: ' + msg.username);
@@ -86,7 +84,7 @@ io.on('connection', function(socket){
 		console.log('   -message: ' + msg.msg);
 		io.to(msg.room).emit('chat_message', msg);
 	});
-	
+
 	socket.on('join_room', function(room, fromRoom, type, pword){
 		var maxUsersPerRoom = 0;
 		if(type == roomType.game){
@@ -118,7 +116,7 @@ io.on('connection', function(socket){
 							console.log("private " +type+ " room: access denied");
 							var message = "Invalid room password. Access Denied.";
 							io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
-						}						
+						}
 					}else{ //it's public
 						console.log("public " +type+ " room joined");
 						socket.join(room);
@@ -150,12 +148,12 @@ io.on('connection', function(socket){
 				socket.adapter.rooms[room].type = type;
 				socket.adapter.rooms[room].name = room;
 				io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
-				
+
 			}
 		}
 		console.log(socket.adapter.rooms);
 	});
-	
+
 	socket.on('leave_room', function(room){
 		if(room == defaultRoom){
 			var message = 'Cannot leave ' + room;
