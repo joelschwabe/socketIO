@@ -28,14 +28,14 @@ app.get('/', function(req, res) {
 var userList = [];
 
 io.on('connection', function(socket){
-	socket.join(serverRoom);
+/* 	socket.join(serverRoom);
 	socket.adapter.rooms[serverRoom].type = roomType.server;
 	socket.adapter.rooms[serverRoom].name = serverRoom;
 	io.to(socket.id).emit('joined_room', socket.adapter.rooms[serverRoom]);
 	socket.join(defaultRoom);
 	socket.adapter.rooms[defaultRoom].type = roomType.chat;
 	socket.adapter.rooms[defaultRoom].name = defaultRoom;
-	io.to(socket.id).emit('joined_room', socket.adapter.rooms[defaultRoom]);
+	io.to(socket.id).emit('joined_room', socket.adapter.rooms[defaultRoom]); */
 	console.log('a user connected to default with socket:'+socket.id);
 	
 	socket.on('reconnect', function(socket){
@@ -86,12 +86,14 @@ io.on('connection', function(socket){
 		io.to(msg.room).emit('chat_message', msg);
 	});
 	
-	socket.on('join_room', function(room, fromRoom, pword, type){
+	socket.on('join_room', function(room, fromRoom, type, pword){
 		var maxUsersPerRoom = 0;
-		if(type == 'game'){
+		if(type == roomType.game){
 			maxUsersPerRoom = maxUsersPerGameRoom;
-		}else{
+		}else if(type == roomType.chat){
 			maxUsersPerRoom = maxUsersPerChatRoom;
+		}else{
+			maxUsersPerRoom = 9999;//or something
 		}
 		if(socket.adapter.rooms.hasOwnProperty(room)){
 			console.log("room exists");

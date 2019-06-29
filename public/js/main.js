@@ -1,4 +1,5 @@
 const defaultRoom = 'General';
+const serverRoom = 'Servers';
 var currentRoom = defaultRoom;
 const roomType = {
 		game: 'game',
@@ -14,7 +15,8 @@ var roomList = [];
 
 connect = function(name){
 	var socket = io();
-	
+	socket.emit('join_room', serverRoom,serverRoom, roomType.server);
+	socket.emit('join_room', defaultRoom,currentRoom, roomType.chat);
 	$('#messageform').submit(function(e){
 		e.preventDefault(); // prevents page reloading
 		var inputval = $('#m').val();
@@ -114,23 +116,23 @@ connect = function(name){
 				return;
 			}
 			if(inputAr.length == 2){
-				socket.emit('join_room', inputAr[1],currentRoom);
+				socket.emit('join_room', inputAr[1],currentRoom, type);
 			}else{
 				var pword = '';
 				for(var i = 2; i < inputAr.length; i++){
 					pword+=inputAr[i];
 				}
-				socket.emit('join_room', inputAr[1],currentRoom, pword, type);
+				socket.emit('join_room', inputAr[1],currentRoom, type, pword);
 			}
 			$('#m').val('');
 			focusCursor('m');
 		}
 		
 		if(inputvalArgs[0]=="joinchat"){
-			join(inputvalArgs, 'chat');
+			join(inputvalArgs, roomType.chat);
 			
 		}else if(inputvalArgs[0]=="joingame"){
-			join(inputvalArgs, 'game');
+			join(inputvalArgs, roomType.game);
 			
 		}else if(inputvalArgs[0]=="leave"){
 			if(inputvalArgs.length < 2){
