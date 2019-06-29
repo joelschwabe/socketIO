@@ -45,6 +45,7 @@ io.on('connection', function(socket){
 	
 	socket.on('disconnect', function(){
 		var userName = socket.username;
+		console.log("disconnected:" + userName);
 		if(userName){
 			removeUser(socket.id);
 			//socket.emit('user list', userList);

@@ -43,6 +43,9 @@ connect = function(name){
 		console.log("Room type:" + currentRoomType);
 		toggleActiveRooms(oldRoom,currentRoom);
 		$('#'+room.name+'_messages').append($('<li>').text('Joined Room:'+room.name).css('color','blue'))
+		if(room.name == defaultRoom){
+			$('#'+room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue'))
+		}
 	});
 
 	socket.on('chat_message', function(msg){
@@ -70,6 +73,8 @@ connect = function(name){
 			appendImage(msg)
 		}else if(checkVideoValid){
 			appendVideo(msg);
+		}else if(checkAudioValid){
+			appendAudio(msg);
 		}else{
 			appendText(msg);
 		}
@@ -259,15 +264,20 @@ appendText = function(msg){
 }
 
 appendVideo = function(msg){
-	//var output = formatVideoOutput(msg);
+	var output = formatVideoOutput(msg.msg);
 	$('#'+msg.room+'_messages')
 	.append($('<li>')
 		.append($('<iframe width="560" height="315" ' +
-		'src="'+ msg +'" ' +
+		'src="'+ output +'" ' +
 		'frameborder="0" allow="accelerometer; autoplay; '+
 		'encrypted-media; gyroscope; picture-in-picture" '+
 		'allowfullscreen></iframe>'))
 	);
+}
+
+appendAudio = function (msg){
+
+
 }
 	
 checkIfImage = function (url){
@@ -294,23 +304,36 @@ checkIfImage = function (url){
 	return false;
 }
 
+checkIfAudio = function (url){
+	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
+		var hostNameExt = url.hostname;
+		if(hostNameExt){
+			if(hostNameExt == "bandcamp.com"){
+		
+			}else{
+				return false;
+			}
+		}
+	}
+	return false;
+}
+
 checkIfVideo = function (url){
 	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
-			var pathNameExt = url.pathname;
-			if(pathNameExt){
-				if(pathNameExt.indexOf('/embed/') > -1){
-					var hostNameExt = url.hostname;
-					if(hostNameExt){
-						if(hostNameExt == "www.youtube.com"){
-							return true;
-						}else if(hostNameExt=="www.dailymotion.com"){
-							return true;
-						}else{
-							return false;
-						}
-					}
-				}
+		var hostNameExt = url.hostname;
+		if(hostNameExt){
+			if(hostNameExt == "www.youtube.com"){
+				return true;
+			}else if(hostNameExt=="www.dailymotion.com"){
+				return true;
+			}else if(hostNameExt=="www.twitch.tv"){
+				return true;
+			}else if(hostNameExt=="vimeo.com"){
+				return true;
+			}else{
+				return false;
 			}
+		}
 	}
 	return false;
 }
@@ -334,6 +357,35 @@ getUserIdFromName = function(name){
 formatTextOutput = function(msg){
 	var output = getName(msg);
 	output += msg.msg;
+	return output;
+}
+
+formatVideoOutput = function(msg){
+	var output = '';
+	var mediaChk = document.createElement('a');
+	mediaChk.href = msg;
+	var hostNameExt = mediaChk.hostname;
+		if(hostNameExt){
+			if(hostNameExt == "www.youtube.com"){
+				var w = "/watch?v=";
+				var vId = msg.substr(msg.indexOf(w)+w.length, msg.length);
+				output = mediaChk.protocol + mediaChk.hostname + "/embed/" + vId;
+			}else if(hostNameExt=="www.dailymotion.com"){
+				var w = "/video/";
+				var vId = msg.substr(msg.indexOf(w)+w.length, msg.length);
+				output = mediaChk.protocol + mediaChk.hostname + "/embed/video/" + vId;
+			}else if(hostNameExt=="vimeo.com"){
+				var w = ".com/";
+				var vId = msg.substr(msg.indexOf(w)+w.length, msg.length);
+				output = mediaChk.protocol + "//player.vimeo.com/" + "video/" + vId;
+			}else if(hostNameExt=="www.twitch.tv"){
+				var w = ".tv/";
+				var vId = msg.substr(msg.indexOf(w)+w.length, msg.length);
+				output = mediaChk.protocol + "//player.twitch" + w + "?channel=" + vId;
+			}else{
+				return msg;
+			}
+		}
 	return output;
 }
 
