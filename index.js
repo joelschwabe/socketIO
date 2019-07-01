@@ -139,7 +139,8 @@ io.on('connection', function(socket){
 				socket.join(room);
 				socket.adapter.rooms[room].type = type;
 				socket.adapter.rooms[room].name = room;
-				io.to(fromRoom).emit('chat_message', getName(socket) + " created " + type + " " + room);
+				var message = getName(socket) + " created " + type + " " + room;
+				io.to(fromRoom).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 				io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
 			}else{
 				console.log("created private " +type+ " room:" + pword);

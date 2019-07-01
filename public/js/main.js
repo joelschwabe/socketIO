@@ -22,7 +22,7 @@ connect = function(name){
 		e.preventDefault(); // prevents page reloading
 		var inputval = $('#m').val();
 		if(inputval.charAt(0) == '/'){
-			checkCommand(inputval.substring(1, inputval.length)); //trim off /
+			checkCommand(inputval.substring(1, inputval.length)); //trim off '/'
 			return false;
 		}
 		socket.emit('chat_message', newMsg(socket.id, socket.username, currentRoom, inputval));
@@ -51,15 +51,12 @@ connect = function(name){
 	});
 
 	socket.on('chat_message', function(msg){
-		var mediaChk = document.createElement('a');
-		mediaChk.href = msg.msg;
-		var imgChkValid = checkIfImage(mediaChk);
-		var checkVideoValid = checkIfVideo(mediaChk);
-		var checkAudioValid = checkIfAudio(mediaChk);
+		
 		if(msg.room == null){
 			msg.room = defaultRoom;
 			currentRoomType = roomType.chat;
 		}
+		
 		if(msg.room == socket.id){ //private_message, needs the id to be the room
 			if(!roomExists(msg.id)){
 				var oldRoom = currentRoom;
@@ -70,16 +67,45 @@ connect = function(name){
 			msg.room = msg.id;
 			currentRoomType = roomType.dm;
 		}
+		
+		var urlMsgsToEmbed = [];
 
-		if(imgChkValid){
-			appendImage(msg)
-		}else if(checkVideoValid){
-			appendVideo(msg);
-		}else if(checkAudioValid){
-			appendAudio(msg);
-		}else{
-			appendText(msg);
+		var msgTextRecieved = msg.msg.split(' ');
+		var msgTextDisplayed = ''; //make as innerHTML later
+		for(var word in msgTextRecieved){
+			if(isUrlValid(msgTextRecieved[word])){
+				//make embed
+				//add as 'a' element to list
+				var mediaChk = document.createElement('a');
+				mediaChk.href = msgTextRecieved[word];
+				mediaChk.text = msgTextRecieved[word];
+				msgTextDisplayed += $(mediaChk).context.outerHTML + " ";
+				//add embed to list in order of appearance
+				urlMsgsToEmbed.push(newMsg(msg.id, msg.username, msg.room, mediaChk));
+			}else{
+				//add as text
+				msgTextDisplayed += msgTextRecieved[word] + " ";
+			}
+			
 		}
+		appendText(newMsg(msg.id, msg.username, msg.room,msgTextDisplayed));
+		
+		for(var msg in urlMsgsToEmbed){
+			var imgChkValid = checkIfImage(urlMsgsToEmbed[msg].msg);
+			var checkVideoValid = checkIfVideo(urlMsgsToEmbed[msg].msg);
+			var checkAudioValid = checkIfAudio(urlMsgsToEmbed[msg].msg);
+			if(imgChkValid){
+				appendImage(urlMsgsToEmbed[msg])
+			}else if(checkVideoValid){
+				appendVideo(urlMsgsToEmbed[msg]);
+			}else if(checkAudioValid){
+				appendAudio(urlMsgsToEmbed[msg]);
+			}else{
+				//nothing
+			} 
+		}
+		
+
 		alignMessageToBottom();
 	});
 
@@ -221,6 +247,16 @@ connect = function(name){
 	console.log("First name change:" + socket.id + "->" + name);
 }
 
+
+function isUrlValid(userInput) {
+	var urlPattern = /(http|ftp|https):\/\/[\w-]+(\.[\w-]+)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?/
+    var res = userInput.match(urlPattern);
+    if(res == null)
+        return false;
+    else
+        return true;
+}
+
 chooseRoom = function(aRoom){
 	if(currentRoom != aRoom){
 		var oldRoom = currentRoom;
@@ -290,18 +326,18 @@ toggleActiveRooms = function (oldRoom,newRoom){
 
 appendImage = function(msg){
 	//var output = formatImageOutput(msg);
-	$('#'+msg.room+'_messages').append($('<li>').append($('<img src="'+msg.msg+'"/>')));
+	$('#'+msg.room+'_messages').append($('<li class="messageMedia">').append($('<img width="500" src="'+msg.msg+'"/>')));
 }
 
 appendText = function(msg){
-	var output = formatTextOutput(msg);
-	$('#'+msg.room+'_messages').append($('<li>').text(output));
+	//var output = formatTextOutput(msg);
+	$('#'+msg.room+'_messages').append($('<li class="messageText">').append('<span class="msgDisplayName">'+getName(msg)+' : </span>' + msg.msg));
 }
 
 appendVideo = function(msg){
 	var output = formatVideoOutput(msg.msg);
 	$('#'+msg.room+'_messages')
-	.append($('<li>')
+	.append($('<li class="messageMedia">')
 		.append($('<iframe width="560" height="315" ' +
 		'src="'+ output +'" ' +
 		'frameborder="0" allow="accelerometer; autoplay; '+
@@ -311,7 +347,7 @@ appendVideo = function(msg){
 }
 
 appendAudio = function (msg){
-
+	//todo
 
 }
 
@@ -340,7 +376,7 @@ checkIfImage = function (url){
 }
 
 checkIfAudio = function (url){
-	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
+/* 	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
 		var hostNameExt = url.hostname;
 		if(hostNameExt){
 			if(hostNameExt == "bandcamp.com"){
@@ -349,7 +385,7 @@ checkIfAudio = function (url){
 				return false;
 			}
 		}
-	}
+	} */
 	return false;
 }
 
@@ -365,6 +401,8 @@ checkIfVideo = function (url){
 				return true;
 			}else if(hostNameExt=="vimeo.com"){
 				return true;
+			}else if(hostNameExt=="www.bitchute.com"){
+				return true;	
 			}else{
 				return false;
 			}
@@ -395,10 +433,9 @@ formatTextOutput = function(msg){
 	return output;
 }
 
-formatVideoOutput = function(msg){
+formatVideoOutput = function(mediaChk){
 	var output = '';
-	var mediaChk = document.createElement('a');
-	mediaChk.href = msg;
+	var msg = mediaChk.href;
 	var hostNameExt = mediaChk.hostname;
 		if(hostNameExt){
 			if(hostNameExt == "www.youtube.com"){
@@ -417,6 +454,10 @@ formatVideoOutput = function(msg){
 				var w = ".tv/";
 				var vId = msg.substr(msg.indexOf(w)+w.length, msg.length);
 				output = mediaChk.protocol + "//player.twitch" + w + "?channel=" + vId;
+			}else if(hostNameExt=="www.bitchute.com"){
+				var w = "/video/";
+				var vId = msg.substr(msg.indexOf(w)+w.length, msg.length);
+				output = mediaChk.protocol + mediaChk.hostname + "/embed/" + vId;				
 			}else{
 				return msg;
 			}
@@ -438,9 +479,9 @@ alignMessageToBottom = function(){
 getName = function(msg){
 	var output;
 	if(msg.username){
-		output = msg.username + ": ";
+		output = msg.username;
 	}else{
-		output = "anon: ";
+		output = "anon";
 	}
 	return output;
 }
