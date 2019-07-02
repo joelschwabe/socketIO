@@ -50,7 +50,9 @@ form button {
 	padding: 0;
 	width: 90%;
     height: 95%;
+	overflow-wrap: break-word;
     overflow-y: auto;
+	overflow-x: hidden;
 	position: fixed;
 }
 #messages li {
@@ -79,8 +81,8 @@ form button {
 }
 .game_message{
 	position: relative;
-    margin-top: -115px;
-    height: 102px;
+    margin-top: -100px;
+    height: 100px;
     width: 100%;
     overflow-y: auto;
 }
@@ -92,6 +94,9 @@ form button {
 }
 .msgDisplayName{
 	font-weight: 900;
+}
+.userIcon{
+	border-radius: 50%;
 }
 .sideTitle {
 	font-size: large;

@@ -59,20 +59,27 @@ io.on('connection', function(socket){
 		console.log(userList);
 	});
 
-	socket.on('assign_name', function(msg){
-		msg = checkForDupName(msg);
+	socket.on('assign_name', function(msg, avatar){
+		console.log("avatar: " + avatar);
 		var oldName = socket.username;
-		socket.username = msg.username;
-		addUser(socket.id, socket.username);
-		var message;
-		if(oldName == null || (typeof oldName == 'undefined')){
-			message = getName(socket) + " is now chatting!";
+		if(oldName == msg.username){
+			socket.avatar = avatar;
+			addUser(socket.id, socket.username, socket.avatar);
 		}else{
-			console.log('a user changed their name:'+ msg.id + ": " + msg.username + ":(room: " + msg.room + ")");
-			message = oldName + " now identifies as '" + getName(socket) +"'!";
+			msg = checkForDupName(msg);
+			socket.username = msg.username;
+			socket.avatar = avatar;
+			addUser(socket.id, socket.username, socket.avatar);
+			var message;
+			if(oldName == null || (typeof oldName == 'undefined')){
+				message = getName(socket) + " is now chatting!";
+			}else{
+				console.log('a user changed their name:'+ msg.id + ": " + msg.username + ":(room: " + msg.room + ")");
+				message = oldName + " now identifies as '" + getName(socket) +"'!";
+			}
+			io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
 		}
 
-		io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
 		io.emit('user_list', userList, socket.adapter.rooms);
 	});
 
@@ -201,15 +208,15 @@ checkForDupName = function (msg){
 	return msg;
 }
 
-addUser = function(id, username){
-	var newUsr = newUser(id, username);
+addUser = function(id, username, avatar){
+	var newUsr = newUser(id, username, avatar);
 	console.log(newUsr);
 	var exists = false;
 	for(var i = 0; i < userList.length; i++){
 		console.log("user:"+userList[i].id + " "  + userList[i].username);
 		if(userList[i].id == newUsr.id){
 			console.log("user exists, changing name...");
-			userList[i] = newUser(userList[i].id, newUsr.username);
+			userList[i] = newUser(userList[i].id, newUsr.username, newUsr.avatar);
 			exists = true;
 			console.log("user:"+userList[i].id + " "  + userList[i].username);
 		}
@@ -248,10 +255,11 @@ newMsg = function(id,username,room,message){
 	return msg
 }
 
-newUser = function(id, name){
+newUser = function(id, name, avatar){
 	var usr = new Object();
 	usr.id = id;
 	usr.username = name;
+	usr.avatar = avatar;
 	return usr;
 }
 

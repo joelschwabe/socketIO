@@ -5,8 +5,8 @@ var current = {
 };
 
 function onResize() {
-	canvas.width = window.innerWidth *0.9;
-	canvas.height = window.innerHeight * 0.95 ;
+	canvas.width = (window.innerWidth *0.9);
+	canvas.height = (window.innerHeight * 0.95);
 }
 
 function drawLine(x0, y0, x1, y1, color, emit){

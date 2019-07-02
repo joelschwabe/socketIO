@@ -1,6 +1,7 @@
 const defaultRoom = 'General';
 const serverRoom = 'Servers';
 var currentRoom = defaultRoom;
+const defaultAvatar = "http://www.newdesignfile.com/postpic/2009/09/generic-user-profile_354184.png";
 const roomType = {
 		game: 'game',
 		chat: 'chat',
@@ -79,6 +80,7 @@ connect = function(name){
 				var mediaChk = document.createElement('a');
 				mediaChk.href = msgTextRecieved[word];
 				mediaChk.text = msgTextRecieved[word]; //maybe trim this?
+				mediaChk.target = "_blank";
 				msgTextDisplayed += $(mediaChk).context.outerHTML + " ";
 				//add embed to list in order of appearance
 				urlMsgsToEmbed.push(newMsg(msg.id, msg.username, msg.room, mediaChk));
@@ -212,12 +214,19 @@ connect = function(name){
 				invalidCommand();
 				return;
 			}
-			var name = '';
-			for(var i = 1; i < inputvalArgs.length; i++){
-				name+=inputvalArgs[i]
+			var name =inputvalArgs[1];
+			var mediaChk = document.createElement('a');
+			var avatar = null;
+			if(inputvalArgs.length == 3){
+				mediaChk.href = inputvalArgs[2];
+				if(checkIfImage(mediaChk)){
+					avatar = mediaChk.href;
+				}
 			}
+			
 			socket.username = name;
-			socket.emit('assign_name', newMsg(socket.id, socket.username, currentRoom, name));
+			socket.avatar = avatar;
+			socket.emit('assign_name', newMsg(socket.id, socket.username, currentRoom, name), avatar);
 			$('#m').val('');
 			focusCursor('m');
 
@@ -324,6 +333,7 @@ toggleActiveRooms = function (oldRoom,newRoom){
 		$('#' +oldRoom+ '_canvas').hide();
 	}
 	updateUserList(userList, currentRoom);
+	alignMessageToBottom();
 }
 
 appendImage = function(msg){
@@ -422,7 +432,12 @@ updateUserList = function(users, thisRoom){
 		if(roomList[room].name == thisRoom){
 			for(var i=0; i < users.length; i++){
 				if(roomList[room].sockets.hasOwnProperty(users[i].id)){
-					$('#usersList').append($('<li>').text(users[i].username));
+					var avatar = users[i].avatar;
+					if(users[i].avatar == null || (typeof users[i].avatar == 'undefined')){
+						avatar = defaultAvatar;
+					}
+					var userAvatar = '<img class="userIcon" src="'+avatar+'"width="40" height="40"/>';
+					$('#usersList').append($('<li>').append(userAvatar).append('<span class="userListName">'+users[i].username+'</span>'));
 				}
 			}
 		}
@@ -459,6 +474,10 @@ formatVideoOutput = function(mediaChk){
 			}else if(hostNameExt=="vimeo.com"){
 				var w = ".com/";
 				var vId = msg.substr(msg.indexOf(w)+w.length, msg.length);
+				var extraSlash = vId.indexOf('/');
+				if(extraSlash){
+					vId = vId.substr(0,vId.indexOf(extraSlash)+2);
+				}
 				output = mediaChk.protocol + "//player.vimeo.com/" + "video/" + vId;
 			}else if(hostNameExt=="www.twitch.tv"){
 				var w = ".tv/";
@@ -539,6 +558,9 @@ getHelp = function(){
 	helpHtml.appendChild(document.createElement('br'));
 	span = document.createElement('span');
 	span.innerText = " /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).";
+	helpHtml.appendChild(span);
+	span = document.createElement('span');
+	span.innerText = " A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.";
 	helpHtml.appendChild(span);
 	return helpHtml;
 }
