@@ -41,10 +41,9 @@ io.on('connection', function(socket){
 		console.log("disconnected:" + userName);
 		if(userName){
 			removeUser(socket.id);
-			//socket.emit('user list', userList);
 			var message = "Goodbye " + getName(socket) + "!";
 			socket.broadcast.emit('chat_message', newMsg(serverName, serverName,null,message));
-			io.emit('user list', userList);
+			io.emit('user_list', userList, socket.adapter.rooms);
 		}
 	});
 
@@ -74,7 +73,7 @@ io.on('connection', function(socket){
 		}
 
 		io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
-		io.emit('user list', userList, msg.room);
+		io.emit('user_list', userList, socket.adapter.rooms);
 	});
 
 	socket.on('chat_message', function(msg){
@@ -152,6 +151,7 @@ io.on('connection', function(socket){
 
 			}
 		}
+		io.emit('user_list', userList,socket.adapter.rooms);
 		console.log(socket.adapter.rooms);
 	});
 

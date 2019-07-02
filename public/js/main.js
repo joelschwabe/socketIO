@@ -36,7 +36,7 @@ connect = function(name){
 
 	socket.on('joined_room', function(room){
 		console.log("Joined:" + room.name);
-		roomList.push(room);
+		//roomList.push(room);
 		var oldRoom = currentRoom;
 		currentRoom = room.name;
 		createNewRoom(room.name, room.name, room.type);
@@ -78,7 +78,7 @@ connect = function(name){
 				//add as 'a' element to list
 				var mediaChk = document.createElement('a');
 				mediaChk.href = msgTextRecieved[word];
-				mediaChk.text = msgTextRecieved[word];
+				mediaChk.text = msgTextRecieved[word]; //maybe trim this?
 				msgTextDisplayed += $(mediaChk).context.outerHTML + " ";
 				//add embed to list in order of appearance
 				urlMsgsToEmbed.push(newMsg(msg.id, msg.username, msg.room, mediaChk));
@@ -135,10 +135,11 @@ connect = function(name){
 		}
 	}
 
-	socket.on('user list', function(usrList, room){ //room name
+	socket.on('user_list', function(usrList, rooms){ //room name
 		console.log("updating userlist:" + usrList);
 		userList = usrList;
-		updateUserList(userList);
+		roomList = rooms;
+		updateUserList(userList, currentRoom);
 	});
 
 	socket.on('drawing', onDrawingEvent);
@@ -322,6 +323,7 @@ toggleActiveRooms = function (oldRoom,newRoom){
 		$('#' +oldRoom+ '_messages').hide();
 		$('#' +oldRoom+ '_canvas').hide();
 	}
+	updateUserList(userList, currentRoom);
 }
 
 appendImage = function(msg){
@@ -411,11 +413,19 @@ checkIfVideo = function (url){
 	return false;
 }
 
-updateUserList = function(users){
+updateUserList = function(users, thisRoom){
 	$('#usersList').remove();
 	$('#users').append($('<ul id="usersList" class="sideList"></ul>'));//recreate after destroying
-	for(var i=0; i < users.length; i++){
-		$('#usersList').append($('<li>').text(users[i].username));
+	var usersInRoom = [];
+	
+	for(var room in roomList){
+		if(roomList[room].name == thisRoom){
+			for(var i=0; i < users.length; i++){
+				if(roomList[room].sockets.hasOwnProperty(users[i].id)){
+					$('#usersList').append($('<li>').text(users[i].username));
+				}
+			}
+		}
 	}
 }
 
