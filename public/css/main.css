@@ -94,6 +94,12 @@ form button {
 }
 .msgDisplayName{
 	font-weight: 900;
+	font-size: larger;
+}
+.userListName{
+	margin-left: 50px;
+    margin-top: -30px;
+	font-size: larger;
 }
 .userIcon{
 	border-radius: 50%;

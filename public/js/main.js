@@ -437,7 +437,7 @@ updateUserList = function(users, thisRoom){
 						avatar = defaultAvatar;
 					}
 					var userAvatar = '<img class="userIcon" src="'+avatar+'"width="40" height="40"/>';
-					$('#usersList').append($('<li>').append(userAvatar).append('<span class="userListName">'+users[i].username+'</span>'));
+					$('#usersList').append($('<li>').append(userAvatar).append('<div class="userListName">'+users[i].username+'</div>'));
 				}
 			}
 		}
