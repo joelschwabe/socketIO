@@ -11,15 +11,26 @@
 	<div id="startup">
 		<div id="nameform">
 		  <span>Please enter a nickname:</span>
-		  <input id="nickname" autocomplete="off" /><button onclick="start()">Join</button>
+		  <input id="nickname" autocomplete="off" v-model="nickname" v-on:keydown="nicknameEnter"/><button v-on:click="start">Join</button>
 		</div>
 	</div>
 	<div id="main">
 		<div id="messages">
+			<message-area
+			  v-for="room in joinedRooms"
+			  v-bind:room="room"
+			  v-bind:key="room.name"
+			></message-area>
 		</div>
 		<div id="rooms">
 			<div class="sideTitle">Rooms:</div>
-			<ul id="roomsList" class="sideList"></ul>
+			<ul id="roomsList" class="sideList">
+			 <rooms-list-item ref="roomsListItem"
+				  v-for="room in joinedRooms"
+				  v-bind:room="room"
+				  v-bind:key="room.name"
+				></rooms-list-item>
+			</ul>
 		</div>
 		<div id="users">
 			<div class="sideTitle">Users:</div>
@@ -32,7 +43,7 @@
 			</ul>
 		</div>
 		<form id="messageform" action="">
-		  <input id="m" autocomplete="off" /><button>Send</button>
+		  <input id="msgForm" autocomplete="off" /><button>Send</button>
 		</form>
 	</div>
    </div>

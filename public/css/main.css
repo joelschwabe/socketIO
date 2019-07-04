@@ -7,6 +7,9 @@ body {
 	font: 13px Helvetica, Arial;
 	background-color: #34c3db70;
 }
+#main{
+	display:none;
+}
 #messageform {
 	background: #000;
 	padding: 3px;
@@ -78,6 +81,9 @@ form button {
 	height: 49%;
 	right: 0px;
 	top: 50%;
+}
+.serverHelpMessage{
+	color:purple;
 }
 .game_message{
 	position: relative;

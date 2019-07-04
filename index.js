@@ -43,7 +43,7 @@ io.on('connection', function(socket){
 			removeUser(socket.id);
 			var message = "Goodbye " + getName(socket) + "!";
 			socket.broadcast.emit('chat_message', newMsg(serverName, serverName,null,message));
-			io.emit('user_list', userList, socket.adapter.rooms);
+			io.emit('users_rooms_list', userList, Object.entries(socket.adapter.rooms));
 		}
 	});
 
@@ -80,7 +80,7 @@ io.on('connection', function(socket){
 			io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
 		}
 
-		io.emit('user_list', userList, socket.adapter.rooms);
+		io.emit('users_rooms_list', userList, Object.entries(socket.adapter.rooms));
 	});
 
 	socket.on('chat_message', function(msg){
@@ -92,7 +92,7 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('join_room', function(room, fromRoom, type, pword){
-		var maxUsersPerRoom = 0;
+		var maxUsersPerRoom;
 		if(type == roomType.game){
 			maxUsersPerRoom = maxUsersPerGameRoom;
 		}else if(type == roomType.chat){
@@ -158,7 +158,7 @@ io.on('connection', function(socket){
 
 			}
 		}
-		io.emit('user_list', userList,socket.adapter.rooms);
+		io.emit('users_rooms_list', userList, Object.entries(socket.adapter.rooms));
 		console.log(socket.adapter.rooms);
 	});
 
@@ -176,7 +176,7 @@ io.on('connection', function(socket){
 			var message = getName(socket) + " left " + room;
 			io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
 			console.log(socket.adapter.rooms);
-			io.emit('user_list', userList,socket.adapter.rooms);
+			io.emit('users_rooms_list', userList,Object.entries(socket.adapter.rooms));
 		}
 	});
 });
