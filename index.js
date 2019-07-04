@@ -176,6 +176,7 @@ io.on('connection', function(socket){
 			var message = getName(socket) + " left " + room;
 			io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
 			console.log(socket.adapter.rooms);
+			io.emit('user_list', userList,socket.adapter.rooms);
 		}
 	});
 });

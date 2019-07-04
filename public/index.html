@@ -3,9 +3,12 @@
   <head>
     <title>Socket.IO chat</title>
 	<link rel="stylesheet" href="/css/main.css" type="text/css">
+	   <!-- development version, includes helpful console warnings -->
+	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
   </head>
   <body>
-	<div id=startup">
+  <div id="app">
+	<div id="startup">
 		<div id="nameform">
 		  <span>Please enter a nickname:</span>
 		  <input id="nickname" autocomplete="off" /><button onclick="start()">Join</button>
@@ -20,12 +23,19 @@
 		</div>
 		<div id="users">
 			<div class="sideTitle">Users:</div>
-			<ul id="usersList" class="sideList"></ul>
+			<ul id="usersList" class="sideList">
+			    <users-list-item
+				  v-for="user in usersInRoom"
+				  v-bind:user="user"
+				  v-bind:key="user.id"
+				></users-list-item>
+			</ul>
 		</div>
 		<form id="messageform" action="">
 		  <input id="m" autocomplete="off" /><button>Send</button>
 		</form>
 	</div>
+   </div>
 	<script src="/socket.io/socket.io.js"></script>
 	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
 	<script src="/js/main.js" type="application/javascript"></script>
