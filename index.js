@@ -19,7 +19,7 @@ const roomType = {
 		server: 'server'
 	};
 const defaultAvatar = 'http://www.newdesignfile.com/postpic/2009/09/generic-user-profile_354184.png';
-
+const serverAvatar = 'http://iconbug.com/data/eb/256/b5d03a8a4fa1d29ab13fa267990bd72c.png';
 // Express Middleware for serving static files
 app.use(express.static(path.join(__dirname, 'public')));
 

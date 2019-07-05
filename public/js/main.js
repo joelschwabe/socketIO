@@ -35,7 +35,7 @@ Vue.component('rooms-list-item', {
 			return this.room.name + '_room';
 		},
 		roomClass: function(){
-			return this.room.type + '_class inactiveRoom';
+			return this.room.type + '_class inactiveRoom roomlist_class';
 		},
 		roomName: function(){
 			return this.room.name;
@@ -43,9 +43,9 @@ Vue.component('rooms-list-item', {
 	},
 	created: function () {
 		console.log("element created:" + this);
-		$('#'+this.room.name+'_messages').append($('<li>').text('Joined Room:'+this.room.name).css('color','blue')); //message line
+		$('#'+this.room.name+'_messages').append($('<li>').text('Joined Room:'+this.room.name).css('color','blue')); /***MESSAGE***/
 		if(this.room.name == defaultRoom){
-			$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue'));//message line
+			$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
 		}
 	},
 	mounted: function () {
@@ -99,7 +99,9 @@ const roomType = {
 			dm: 'dm',
 			server: 'server'
 		};
-		
+const defaultAvatar =  'http://www.newdesignfile.com/postpic/2009/09/generic-user-profile_354184.png';
+const serverAvatar = 'http://iconbug.com/data/eb/256/b5d03a8a4fa1d29ab13fa267990bd72c.png';	
+
 var vm = new Vue({
 	el: '#app',
 	data: {
@@ -114,8 +116,7 @@ var vm = new Vue({
 			id: '',
 			username: '',
 			avatar: ''
-		},	
-		defaultAvatar :  'http://www.newdesignfile.com/postpic/2009/09/generic-user-profile_354184.png'
+		}
 	},
 	methods: {
 		getUsersInRoom :  function(){
@@ -125,7 +126,7 @@ var vm = new Vue({
 					for(var i=0; i < this.userList.length; i++){
 						if(this.roomList[room].sockets.hasOwnProperty(this.userList[i].id)){
 							if(this.userList[i].avatar == null || (typeof this.userList[i].avatar == 'undefined')){
-								this.userList[i].avatar  = this.defaultAvatar;
+								this.userList[i].avatar  = defaultAvatar;
 							}
 							roomUsers.push(this.userList[i]);
 						}
@@ -232,8 +233,7 @@ connect = function(name){
 		}
 		socket.emit('chat_message', newMsg(socket.id, socket.username, vm.currentRoom, inputval));
 		if(vm.currentRoomType == roomType.dm){ //dm's are only sent to the user dm'd, so we need to keep track of the messages we sent
-			appendText(newMsg(vm.currentRoom, socket.username, vm.currentRoom,inputval));
-			//$('#'+vm.currentRoom+'_messages').append($('<li>').text(socket.username + ":" + inputval)); //message line
+			appendText(newMsg(vm.currentRoom, socket.username, vm.currentRoom,inputval));  /***MESSAGE***/
 		}
 		$('#msgForm').val('');
 		focusCursor('msgForm');
@@ -250,9 +250,9 @@ connect = function(name){
 		console.log("Room type:" + vm.currentRoomType);
 		console.log(vm.$refs);
 		vm.toggleActiveRooms(oldRoom);
-		$('#'+room.name+'_messages').append($('<li>').text('Joined Room:'+room.name).css('color','blue')); //message line
+		$('#'+room.name+'_messages').append($('<li>').text('Joined Room:'+room.name).css('color','blue')); /***MESSAGE***/
 		if(room.name == defaultRoom){
-			$('#'+room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue'));//message line
+			$('#'+room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
 		}
 		focusCursor('msgForm');
 	});
@@ -322,7 +322,7 @@ connect = function(name){
 		//$('#'+room+ '_room').remove();
 		//$('#'+room+ '_messages').remove();
 		$('#' +vm.currentRoom+ '_messages').show();
-		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));
+		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));  /***MESSAGE***/
 		alignMessageToBottom();
 	});
 
@@ -417,10 +417,10 @@ connect = function(name){
 					vm.currentRoom = userId;
 				}
 				socket.emit('chat_message', newMsg(socket.id, socket.username, userId, message));
-				$('#'+vm.currentRoom+'_messages').append($('<li>').text(socket.username + ":" + message));
+				$('#'+vm.currentRoom+'_messages').append($('<li>').text(socket.username + ":" + message));  /***MESSAGE***/
 				vm.currentRoomType = roomType.dm;
 			}else{
-				$('#'+currentRoom+'_messages').append($('<li>').text('Invalid user.').css('color','red'));
+				$('#'+currentRoom+'_messages').append($('<li>').text('Invalid user.').css('color','red'));  /***MESSAGE***/
 			}
 	/* 		alignMessageToBottom();
 			$('#msgForm').val('');
@@ -455,19 +455,19 @@ connect = function(name){
 			focusCursor('msgForm'); */
 
 		}else if(inputvalArgs[0]=="help"){
-			$('#'+vm.currentRoom+'_messages').append('<help-message></help-message>');
+			$('#'+vm.currentRoom+'_messages').append('<help-message></help-message>');  /***MESSAGE***/
 			/* alignMessageToBottom();
 			$('#msgForm').val('');
 			focusCursor('msgForm'); */
 
 		}else{
-			$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
+			$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
 			//alignMessageToBottom();
 		}
 		clearAndScroll();
 	}
 	invalidCommand = function(){
-		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red'));
+		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
 	}
 
 	socket.username = name;
@@ -595,7 +595,7 @@ getUserIdFromName = function(name){
 
 getAvatarFromName = function(name){
 	if(name == 'Server'){
-		return vm.defaultAvatar;
+		return serverAvatar;
 	}
 	for(var i=0; i < vm.userList.length; i++){
 		if(vm.userList[i].username == name){
@@ -648,7 +648,7 @@ formatVideoOutput = function(mediaChk){
 alignMessageToBottom = function(){
 	var scrollm;
 	if(vm.currentRoomType == roomType.game){
-		scrollm = document.getElementById(currentRoom+'_messages');
+		scrollm = document.getElementById(vm.currentRoom+'_messages');
 	}else{
 		scrollm = document.getElementById('messages');
 			

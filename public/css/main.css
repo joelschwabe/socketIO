@@ -5,14 +5,13 @@
 }
 body {
 	font: 13px Helvetica, Arial;
-	background-color: #34c3db70;
+	background-color:gainsboro;
 }
 #main{
 	display:none;
 }
 #messageform {
 	background: #000;
-	padding: 3px;
 	position: fixed;
 	bottom: 0px;
 	height:5%;
@@ -20,7 +19,7 @@ body {
 }
 #nameform {
 	background: #000;
-	padding: 3px;
+	padding: 5px;
 	position: fixed;
 	top: 45%;
 	right:25%;
@@ -36,16 +35,12 @@ body {
 	text-align: center;
 }
 form input {
-	border: 0;
-	padding: 10px;
+	padding: 15px;
 	width: 90%;
-	margin-right: 1%;
 }
 form button {
-	width: 9%;
-	background: rgb(130, 224, 255);
-	border: none;
-	padding: 10px;
+	width: 10%;
+	padding: 15px;
 }
 #messages {
 	list-style-type: none;
@@ -57,30 +52,56 @@ form button {
     overflow-y: auto;
 	overflow-x: hidden;
 	position: fixed;
+	
+	background: linear-gradient(137deg,#6A5076,#290626,#294165);
+	background-size: 300% 300%;
+	-webkit-animation: GradientAnim 22s ease infinite;
+	-moz-animation: GradientAnim 22s ease infinite;
+	animation: GradientAnim 22s ease infinite;
+}
+@keyframes GradientAnim {
+	0%, 100% {
+		background-position: 17% 0;
+	}
+	50% {
+		background-position: 84% 100%;
+	}
 }
 #messages li {
 	padding: 5px 10px;
 }
 #messages li:nth-child(odd) {
-	background: #eee;
+	background: #744a9429;
 }
-
+#messages li:nth-child(even) {
+	background: #47206529;
+}
 #name {}
 #rooms {
-	position: fixed;
-	background-color: gray;
-	width: 10%;
-	height: 99%;
-	right: 0px;
-	top: 0px;
+    top: 0px;
 }
 #users {
-	position: fixed;
-	background-color: gray;
-	width: 10%;
-	height: 49%;
+    border: 2px solid black;
+    height: auto;
+    margin: -5px;
+    padding-bottom: 15px;
+    margin-top: 20px;
+}
+.sideBar{
 	right: 0px;
-	top: 50%;
+	position: fixed;
+    background-color: #6a5076;
+    width: 10%;
+	height: 100%;
+    border-style: ridge;
+    padding: 3px;
+    border-width: 2px;
+    border-color: black;
+}
+.roomlist_class{
+    padding: 3px;
+    margin-bottom: 2px;
+    margin-left: -5px;
 }
 .serverHelpMessage{
 	color:purple;
@@ -99,9 +120,13 @@ form button {
 	padding-bottom: 5px;	
 }
 .messageTextContainer{
-	display: flow-root;
+    display: flow-root;
     margin-left: 45px;
     margin-top: -33px;
+    font-size: medium;
+	color:white;
+    font-stretch: ultra-expanded;
+    text-shadow: -1px -1px 3px #000000;
 }
 .msgDisplayName{
 	font-weight: 900;
@@ -133,6 +158,8 @@ form button {
 }
 .activeRoom {
 	border-style: inset;
+	border-width: 5px;
+    border-color: gray;
 }
 .inactiveRoom {
 	border-style: outset;

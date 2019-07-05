@@ -22,25 +22,27 @@
 			  v-bind:key="room.name"
 			></message-area>
 		</div>
-		<div id="rooms">
-			<div class="sideTitle">Rooms:</div>
-			<ul id="roomsList" class="sideList">
-			 <rooms-list-item ref="roomsListItem"
-				  v-for="room in joinedRooms"
-				  v-bind:room="room"
-				  v-bind:key="room.name"
-				></rooms-list-item>
-			</ul>
-		</div>
-		<div id="users">
-			<div class="sideTitle">Users:</div>
-			<ul id="usersList" class="sideList">
-			    <users-list-item
-				  v-for="user in usersInRoom"
-				  v-bind:user="user"
-				  v-bind:key="user.id"
-				></users-list-item>
-			</ul>
+		<div class="sideBar">
+			<div id="rooms">
+				<div class="sideTitle">Rooms:</div>
+				<ul id="roomsList" class="sideList">
+				 <rooms-list-item ref="roomsListItem"
+					  v-for="room in joinedRooms"
+					  v-bind:room="room"
+					  v-bind:key="room.name"
+					></rooms-list-item>
+				</ul>
+			</div>
+			<div id="users">
+				<div class="sideTitle">Users:</div>
+				<ul id="usersList" class="sideList">
+					<users-list-item
+					  v-for="user in usersInRoom"
+					  v-bind:user="user"
+					  v-bind:key="user.id"
+					></users-list-item>
+				</ul>
+			</div>
 		</div>
 		<form id="messageform" action="">
 		  <input id="msgForm" autocomplete="off" /><button>Send</button>
