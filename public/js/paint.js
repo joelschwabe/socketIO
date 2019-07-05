@@ -1,19 +1,19 @@
 var canvas, context;
 var drawing = false;
-var current = {
-	color: 'black'
+var penCursor = {
+	color: '#ff0000'
 };
 
 function onResize() {
 	canvas.width = (window.innerWidth *0.9);
-	canvas.height = (window.innerHeight * 0.95);
+	canvas.height = (window.innerHeight * 0.94);
 }
 
 function drawLine(x0, y0, x1, y1, color, emit){
 	context.beginPath();
 	context.moveTo(x0, y0);
 	context.lineTo(x1, y1);
-	context.strokeStyle = 'black';
+	context.strokeStyle = color;
 	context.lineWidth = 3;
 	context.stroke();
 	context.closePath();
@@ -29,24 +29,24 @@ function drawLine(x0, y0, x1, y1, color, emit){
 		color: color
 	};
 	
-	socket.emit('drawing',newMsg(socket.id, socket.username, currentRoom,line));
+	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom,line));
 }
 
 function onMouseDown(e){
 	drawing = true;
-	current.x = e.clientX||e.touches[0].clientX;
-	current.y = e.clientY||e.touches[0].clientY;
+	penCursor.x = e.clientX||e.touches[0].clientX;
+	penCursor.y = e.clientY||e.touches[0].clientY;
 }
 function onMouseUp(e){
 	if (!drawing) { return; }
 	drawing = false;
-	drawLine(current.x, current.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, current.color, true);
+	drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, true);
 }
 function onMouseMove(e){
 	if (!drawing) { return; }
-	drawLine(current.x, current.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, current.color, true);
-	current.x = e.clientX||e.touches[0].clientX;
-	current.y = e.clientY||e.touches[0].clientY;
+	drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, true);
+	penCursor.x = e.clientX||e.touches[0].clientX;
+	penCursor.y = e.clientY||e.touches[0].clientY;
 }
 function onDrawingEvent(msg){
 	var w = canvas.width;

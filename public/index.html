@@ -1,7 +1,8 @@
 <!doctype html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
+    <meta charset="UTF-8"></meta>
+    <title>Socket.io w/ Vue.js chat</title>
 	<link rel="stylesheet" href="/css/main.css" type="text/css">
 	   <!-- development version, includes helpful console warnings -->
 	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
@@ -43,10 +44,14 @@
 					></users-list-item>
 				</ul>
 			</div>
+			<div id="colorPicker">
+				<p>Pick Color:</p>
+				<input type="color" id="colorPickerBar" onchange="updateColor()" value="#ff0000" style="width:50%;">
+			</div>
 		</div>
-		<form id="messageform" action="">
-		  <input id="msgForm" autocomplete="off" /><button>Send</button>
-		</form>
+		<div id="messageform">
+		  <textarea id="msgForm" v-on:keydown="messageEnter"></textarea><button id="msgSubmitButton" v-on:click="sendMessage">Send</button>
+		</div>
 	</div>
    </div>
 	<script src="/socket.io/socket.io.js"></script>

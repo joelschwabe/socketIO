@@ -63,14 +63,24 @@ Vue.component('rooms-list-item', {
 			});
 		}
 	}
-}
-);
+});
 
 Vue.component('message-area', {
 	props: ['room'],
-	template: '<ul :id="roomId" :class="roomClass"></ul>',
+	template: 	'<div>'+
+				'<div v-if="hasCanvas">' +
+				'<canvas :id="roomId" :class="roomClass"></canvas>'+
+				'<ul :id="gameMessages" :class="gameClass"></ul>'+
+				'</div>'+
+				'<div v-else="hasCanvas">' +
+				'<ul :id="roomId" :class="roomClass"></ul>'+
+				'</div>'+
+				'</div>',
 	computed: {
 		roomId: function(){
+			if(this.room.type==roomType.game){
+				return this.room.name + '_canvas';
+			}
 			if(this.room.id){
 				return this.room.id + '_messages';
 			}
@@ -78,10 +88,38 @@ Vue.component('message-area', {
 		},
 		roomClass: function(){
 			return this.room.type + '_class';
+		},
+		gameMessages : function(){
+			return this.room.name + '_messages';
+		},
+		gameClass: function(){
+			return this.room.type + '_message';
+		},
+		hasCanvas : function(){
+			return (this.room.type==roomType.game);
+		}
+	},
+	mounted: function () {
+		if(this.room.type==roomType.game){
+			canvas = document.getElementById(this.room.name+'_canvas');
+			context = canvas.getContext('2d');
+			canvas.addEventListener('mousedown', onMouseDown, false);
+			canvas.addEventListener('mouseup', onMouseUp, false);
+			canvas.addEventListener('mouseout', onMouseUp, false);
+			canvas.addEventListener('mousemove', throttle(onMouseMove, 5), false);
+
+			//Touch support for mobile devices
+			canvas.addEventListener('touchstart', onMouseDown, false);
+			canvas.addEventListener('touchend', onMouseUp, false);
+			canvas.addEventListener('touchcancel', onMouseUp, false);
+			canvas.addEventListener('touchmove', throttle(onMouseMove, 5), false);
+			onResize();
+
+			context.fillStyle = "#000000";
+			context.fillRect(0, 0, canvas.width, canvas.height);
 		}
 	}
 });
-
 
 Vue.component('users-list-item', {
   props: ['user'],
@@ -111,12 +149,7 @@ var vm = new Vue({
 		joinedRooms : [],
 		usersInRoom: [],
 		currentRoom : defaultRoom, //referenced by .name which is unique
-		currentRoomType : roomType.chat,
-		user :{
-			id: '',
-			username: '',
-			avatar: ''
-		}
+		currentRoomType : roomType.chat
 	},
 	methods: {
 		getUsersInRoom :  function(){
@@ -167,8 +200,14 @@ var vm = new Vue({
 				$('#' +oldRoom+ '_messages').hide();
 				$('#' +oldRoom+ '_canvas').hide();
 			}
+			if(this.currentRoomType == roomType.game){
+				$('#colorPicker').show();
+			}else{
+				$('#colorPicker').hide();
+				alignMessageToBottom();
+			}
 			this.usersInRoom = this.getUsersInRoom();
-			alignMessageToBottom();
+			
 		},
 		start : function(){
 			$('#nameform').hide();
@@ -176,34 +215,27 @@ var vm = new Vue({
 			connect(this.nickname);
 		},
 		nicknameEnter : function(event){
-			if ( event.which == 13 ) {
+			if ( event.which == 13) {
 				this.start();
 			}
 		},
-		createNewRoom : function (room, roomDisplayName, type){
-			
-			if(type==vm.roomType.game){
-				$('#messages').append($('<canvas class="'+type+'_class" id="'+room+'_canvas"></canvas>'));
-				$('#messages').append($('<ul id="'+room+'_messages" class="'+type+'_message"></ul>'));
-				canvas = document.getElementById(room+'_canvas');
-				context = canvas.getContext('2d');
-				canvas.addEventListener('mousedown', onMouseDown, false);
-				canvas.addEventListener('mouseup', onMouseUp, false);
-				canvas.addEventListener('mouseout', onMouseUp, false);
-				canvas.addEventListener('mousemove', throttle(onMouseMove, 5), false);
-
-				//Touch support for mobile devices
-				canvas.addEventListener('touchstart', onMouseDown, false);
-				canvas.addEventListener('touchend', onMouseUp, false);
-				canvas.addEventListener('touchcancel', onMouseUp, false);
-				canvas.addEventListener('touchmove', throttle(onMouseMove, 5), false);
-				onResize();
-
-				context.fillStyle = "#FF0000";
-				context.fillRect(0, 0, canvas.width, canvas.height);
-
-			}else{
-				$('#messages').append($('<ul id="'+room+'_messages" class="'+type+'_class"></ul>'));
+		sendMessage : function(){
+			var inputval = $('#msgForm').val();
+			if(inputval.charAt(0) == '/'){
+				checkCommand(inputval.substring(1, inputval.length)); //trim off '/'
+				return false;
+			}
+			socket.emit('chat_message', newMsg(socket.id, socket.username, vm.currentRoom, inputval));
+			if(vm.currentRoomType == roomType.dm){ //dm's are only sent to the user dm'd, so we need to keep track of the messages we sent
+				appendText(newMsg(vm.currentRoom, socket.username, vm.currentRoom,inputval));  /***MESSAGE***/
+			}
+			$('#msgForm').val('');
+			focusCursor('msgForm');
+		},
+		messageEnter : function(event){
+			if ( event.which == 13 && !event.shiftKey) {
+				this.sendMessage();
+				event.preventDefault(); //don't let the newline on to the textarea after sending
 			}
 		}
 	},
@@ -215,30 +247,11 @@ var vm = new Vue({
 	}
 })
 
-
-
-$('#main').hide(); //change main to display: none ??
 var socket;
-
 connect = function(name){
 	socket = io();
 	socket.emit('join_room', serverRoom, serverRoom, roomType.server);
 	socket.emit('join_room', defaultRoom,defaultRoom, roomType.chat);
-	$('#messageform').submit(function(e){
-		e.preventDefault(); // prevents page reloading
-		var inputval = $('#msgForm').val();
-		if(inputval.charAt(0) == '/'){
-			checkCommand(inputval.substring(1, inputval.length)); //trim off '/'
-			return false;
-		}
-		socket.emit('chat_message', newMsg(socket.id, socket.username, vm.currentRoom, inputval));
-		if(vm.currentRoomType == roomType.dm){ //dm's are only sent to the user dm'd, so we need to keep track of the messages we sent
-			appendText(newMsg(vm.currentRoom, socket.username, vm.currentRoom,inputval));  /***MESSAGE***/
-		}
-		$('#msgForm').val('');
-		focusCursor('msgForm');
-		return false;
-	});
 
 	socket.on('joined_room', function(room){
 		console.log("Joined:" + room.name);
@@ -277,7 +290,13 @@ connect = function(name){
 		
 		var urlMsgsToEmbed = [];
 
-		var msgTextRecieved = msg.msg.split(' ');
+		var withBrs = '';
+		var msgTextRecieved = msg.msg.split('\\n');
+		for(var word in msgTextRecieved){
+			withBrs = msgTextRecieved[word] + '<br/>';
+		}
+		var msgTextRecieved = withBrs.split(' ');
+		
 		var msgTextDisplayed = ''; //make as innerHTML later
 		for(var word in msgTextRecieved){
 			if(isUrlValid(msgTextRecieved[word])){
@@ -291,6 +310,11 @@ connect = function(name){
 				//add embed to list in order of appearance
 				urlMsgsToEmbed.push(newMsg(msg.id, msg.username, msg.room, mediaChk));
 			}else{
+				//check for newlines
+				var match = /\r|\n/.exec(msgTextRecieved[word]);
+				if (match) {
+					msgTextDisplayed += "<br/>";
+				}
 				//add as text
 				msgTextDisplayed += msgTextRecieved[word] + " ";
 			}
@@ -343,12 +367,12 @@ connect = function(name){
 
 	socket.on('users_rooms_list', function(usrList, rooms){ //room name
 		console.log("updating rooms and userlist");
-		for(var r in rooms){
+/* 		for(var r in rooms){
 			console.log(rooms[r]);
 		}
 		for(var u in usrList){
 			console.log(usrList[u]);
-		}
+		} */
 		vm.userList = usrList;
 		vm.roomList = rooms;
 		vm.usersInRoom = vm.getUsersInRoom();
@@ -376,8 +400,6 @@ connect = function(name){
 				}
 				socket.emit('join_room', inputAr[1],vm.currentRoom, type, pword);
 			}
-/* 			$('#msgForm').val('');
-			focusCursor('msgForm'); */
 			clearAndScroll();
 		}
 
@@ -393,8 +415,6 @@ connect = function(name){
 				return;
 			}
 			socket.emit('leave_room', inputvalArgs[1]);
-/* 			$('#msgForm').val('');
-			focusCursor('msgForm'); */
 			clearAndScroll();
 		}else if(inputvalArgs[0]=="dm"){
 			if(inputvalArgs.length < 2){
@@ -422,9 +442,6 @@ connect = function(name){
 			}else{
 				$('#'+currentRoom+'_messages').append($('<li>').text('Invalid user.').css('color','red'));  /***MESSAGE***/
 			}
-	/* 		alignMessageToBottom();
-			$('#msgForm').val('');
-			focusCursor('msgForm'); */
 			clearAndScroll();
 		}else if(inputvalArgs[0]=="name"){
 			if(inputvalArgs.length < 2){
@@ -451,18 +468,12 @@ connect = function(name){
 		}else if(inputvalArgs[0]=="debug"){
 			socket.emit('debug server');
 			console.log(socket);
-/* 			$('#msgForm').val('');
-			focusCursor('msgForm'); */
 
 		}else if(inputvalArgs[0]=="help"){
 			$('#'+vm.currentRoom+'_messages').append('<help-message></help-message>');  /***MESSAGE***/
-			/* alignMessageToBottom();
-			$('#msgForm').val('');
-			focusCursor('msgForm'); */
 
 		}else{
 			$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
-			//alignMessageToBottom();
 		}
 		clearAndScroll();
 	}
@@ -474,7 +485,6 @@ connect = function(name){
 	socket.emit('assign_name', newMsg(socket.id, socket.username, vm.currentRoom, name));
 	console.log("First name change:" + socket.id + "->" + name);
 }
-
 
 
 function isUrlValid(userInput) {
@@ -499,13 +509,11 @@ generateGameRoomName = function(){
 }
 
 appendImage = function(msg){
-	//var output = formatImageOutput(msg);
 	$('#'+msg.room+'_messages').append($('<li class="messageMedia">').append($('<img width="500" src="'+msg.msg+'"/>')));
 }
 
 appendText = function(msg){
-	//var output = formatTextOutput(msg);
-	$('#'+msg.room+'_messages').append($('<li class="messageText">').append('<img class="userIcon" src="'+getAvatarFromName(msg.username)+'"/><div class="messageTextContainer"><span class="msgDisplayName">'+getName(msg)+' : </span>' + msg.msg+ '</div>'));
+	$('#'+msg.room+'_messages').append($('<li class="messageText">').append('<img class="userIcon" src="'+getAvatarFromName(msg.username)+'"/><div class="messageTextContainer"><span class="msgDisplayName">'+getName(msg)+'</span>' + '<div class="messageDisplayText">'+msg.msg+ '</div></div>'));
 }
 
 appendVideo = function(msg){
@@ -522,7 +530,6 @@ appendVideo = function(msg){
 
 appendAudio = function (msg){
 	//todo
-
 }
 
 checkIfImage = function (url){
@@ -645,13 +652,16 @@ formatVideoOutput = function(mediaChk){
 	return output;
 }
 
+updateColor = function(){
+	penCursor.color = $('#colorPickerBar')[0].value;
+}
+
 alignMessageToBottom = function(){
 	var scrollm;
 	if(vm.currentRoomType == roomType.game){
 		scrollm = document.getElementById(vm.currentRoom+'_messages');
 	}else{
-		scrollm = document.getElementById('messages');
-			
+		scrollm = document.getElementById('messages');	
 	}
 	scrollm.scrollTo(0,scrollm.scrollHeight);
 }
@@ -686,6 +696,8 @@ newRoom = function(id,name,type){
 
 focusCursor = function(id){
 	$('#'+id).focus;
+	$('#'+id).selectionStart = 1;
+	$('#'+id).selectionEnd = 1;
 	$('#'+id).setActive;
 	$('#'+id).select();
 }
@@ -693,6 +705,6 @@ focusCursor('nickname');
 
 clearAndScroll = function (){
 	alignMessageToBottom();
-	$('#msgForm').val('');
+	$('#msgForm').val(null);
 	focusCursor('msgForm');
 }

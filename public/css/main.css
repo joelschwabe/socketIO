@@ -14,8 +14,20 @@ body {
 	background: #000;
 	position: fixed;
 	bottom: 0px;
-	height:5%;
 	width: 100%;
+}
+#msgForm {
+	resize: none;
+	margin: 0px;
+	height:50px;
+	width: 90%;
+	padding: 5px;
+}
+#msgSubmitButton {
+	float:right;
+	display:inline;
+	height:50px;
+	width: 10%;
 }
 #nameform {
 	background: #000;
@@ -106,6 +118,10 @@ form button {
 .serverHelpMessage{
 	color:purple;
 }
+.game_class{
+	overflow-y: hidden;
+	overflow-x: hidden;
+}
 .game_message{
 	position: relative;
     margin-top: -100px;
@@ -122,7 +138,7 @@ form button {
 .messageTextContainer{
     display: flow-root;
     margin-left: 45px;
-    margin-top: -33px;
+    margin-top: -50px;
     font-size: medium;
 	color:white;
     font-stretch: ultra-expanded;
@@ -131,6 +147,9 @@ form button {
 .msgDisplayName{
 	font-weight: 900;
 	font-size: larger;
+}
+.messageDisplayText{
+	margin-left: 1px;
 }
 .userListItem{
 	margin-top:10px;
@@ -169,4 +188,9 @@ form button {
 }
 .inactiveMessages {
 	display: none;
+}
+#colorPicker{
+	margin-top: 15px;
+    font-size: medium;
+    font-weight: 700;
 }
