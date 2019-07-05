@@ -18,6 +18,8 @@ const roomType = {
 		dm: 'dm',
 		server: 'server'
 	};
+const defaultAvatar = 'http://www.newdesignfile.com/postpic/2009/09/generic-user-profile_354184.png';
+
 // Express Middleware for serving static files
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -43,7 +45,7 @@ io.on('connection', function(socket){
 			removeUser(socket.id);
 			var message = "Goodbye " + getName(socket) + "!";
 			socket.broadcast.emit('chat_message', newMsg(serverName, serverName,null,message));
-			io.emit('users_rooms_list', userList, Object.entries(socket.adapter.rooms));
+			io.emit('users_rooms_list', userList, socket.adapter.rooms);
 		}
 	});
 
@@ -61,6 +63,9 @@ io.on('connection', function(socket){
 
 	socket.on('assign_name', function(msg, avatar){
 		console.log("avatar: " + avatar);
+		if(avatar == null || avatar == undefined){
+			avatar = defaultAvatar
+		}
 		var oldName = socket.username;
 		if(oldName == msg.username){
 			socket.avatar = avatar;
@@ -80,7 +85,7 @@ io.on('connection', function(socket){
 			io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
 		}
 
-		io.emit('users_rooms_list', userList, Object.entries(socket.adapter.rooms));
+		io.emit('users_rooms_list', userList, socket.adapter.rooms);
 	});
 
 	socket.on('chat_message', function(msg){
@@ -158,7 +163,7 @@ io.on('connection', function(socket){
 
 			}
 		}
-		io.emit('users_rooms_list', userList, Object.entries(socket.adapter.rooms));
+		io.emit('users_rooms_list', userList, socket.adapter.rooms);
 		console.log(socket.adapter.rooms);
 	});
 
@@ -176,38 +181,40 @@ io.on('connection', function(socket){
 			var message = getName(socket) + " left " + room;
 			io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
 			console.log(socket.adapter.rooms);
-			io.emit('users_rooms_list', userList,Object.entries(socket.adapter.rooms));
+			io.emit('users_rooms_list', userList, socket.adapter.rooms);
 		}
 	});
-});
-
-checkForDupName = function (msg){
-	for(var i=0; i < userList.length; i++){
-		if(userList[i].username == msg.username){
-			var index = 1;
-			if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
-				var isNumber = true;
-				while(isNumber){
-					if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
-						//is a letter
-						isNumber = false;
-						var numberName = msg.username.substr(msg.username.length - index, msg.username.length);
-						var stringName =  msg.username.substr(0, msg.username.length - index);
-						msg.username = stringName + (parseInt(numberName) + 1);
-						//console.log(index);
-					}else{
-						//is a number
-						index++;
-						//console.log(index);
+	
+	checkForDupName = function (msg){
+		for(var i=0; i < userList.length; i++){
+			if(userList[i].username == msg.username){
+				var index = 1;
+				if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
+					var isNumber = true;
+					while(isNumber){
+						if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
+							//is a letter
+							isNumber = false;
+							var numberName = msg.username.substr(msg.username.length - index, msg.username.length);
+							var stringName =  msg.username.substr(0, msg.username.length - index);
+							msg.username = stringName + (parseInt(numberName) + 1);
+							//console.log(index);
+						}else{
+							//is a number
+							index++;
+							//console.log(index);
+						}
 					}
+				}else{
+					msg.username = msg.username + "1";
 				}
-			}else{
-				msg.username = msg.username + "1";
+				io.to(socket.id).emit('force_name_update', msg.username);
 			}
 		}
+		return msg;
 	}
-	return msg;
-}
+
+});
 
 addUser = function(id, username, avatar){
 	var newUsr = newUser(id, username, avatar);
@@ -241,9 +248,9 @@ removeUser = function(id){
 		}
 	}
 	if(remove){
-		//console.log("current userlist:" + userList);
+		console.log("current userlist:" + userList.toString());
 		userList.splice(i,1);
-		//console.log("after delete:" + userList);
+		console.log("after delete:" + userList.toString());
 	}
 }
 

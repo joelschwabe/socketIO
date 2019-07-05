@@ -98,6 +98,11 @@ form button {
 	padding-top: 5px;
 	padding-bottom: 5px;	
 }
+.messageTextContainer{
+	display: flow-root;
+    margin-left: 45px;
+    margin-top: -33px;
+}
 .msgDisplayName{
 	font-weight: 900;
 	font-size: larger;
@@ -114,6 +119,7 @@ form button {
 	border-radius: 50%;
 	width: 40px;
 	height: 40px;
+	margin: 0px 0px 5px 0px;
 }
 .sideTitle {
 	font-size: large;
