@@ -1,4 +1,4 @@
-Vue.component('help-message', {
+/* Vue.component('help-message', {
 	template: '<li class="serverHelpMessage">'+ 
 					'<div>' +
 					'<span>Help commands:</span><br/>' +
@@ -12,7 +12,7 @@ Vue.component('help-message', {
 					'<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>' +
 					'</div>' +
 				'</li>'
-});
+}); */
 
 Vue.component('message-item', {
 	props: ['item'],
@@ -38,7 +38,7 @@ Vue.component('rooms-list-item', {
 			return this.room.type + '_class inactiveRoom roomlist_class';
 		},
 		roomName: function(){
-			return this.room.name;
+			return this.room.name + " - (" + this.room.type + ")";
 		}
 	},
 	created: function () {
@@ -69,7 +69,8 @@ Vue.component('message-area', {
 	props: ['room'],
 	template: 	'<div>'+
 				'<div v-if="hasCanvas">' +
-				'<canvas :id="roomId" :class="roomClass"></canvas>'+
+				'<canvas :id="cursorCanvasID" class="cursor_class"></canvas><canvas :id="roomId" :class="roomClass"></canvas>'+
+				'<div :id="gameDivId" :class="roomClass"></div>'+
 				'<ul :id="gameMessages" :class="gameClass"></ul>'+
 				'</div>'+
 				'<div v-else="hasCanvas">' +
@@ -92,6 +93,12 @@ Vue.component('message-area', {
 		gameMessages : function(){
 			return this.room.name + '_messages';
 		},
+		gameDivId : function(){
+			return this.room.name + '_game';
+		},
+		cursorCanvasID: function(){
+			return this.room.name + '_cursor_canvas';
+		},
 		gameClass: function(){
 			return this.room.type + '_message';
 		},
@@ -102,24 +109,19 @@ Vue.component('message-area', {
 	mounted: function () {
 		if(this.room.type==roomType.game){
 			canvas = document.getElementById(this.room.name+'_canvas');
+			cursorCanvas = document.getElementById(this.room.name+'_cursor_canvas');
 			context = canvas.getContext('2d');
-			canvas.addEventListener('mousedown', onMouseDown, false);
-			canvas.addEventListener('mouseup', onMouseUp, false);
-			canvas.addEventListener('mouseout', onMouseUp, false);
-			canvas.addEventListener('mousemove', throttle(onMouseMove, 5), false);
-
-			//Touch support for mobile devices
-			canvas.addEventListener('touchstart', onMouseDown, false);
-			canvas.addEventListener('touchend', onMouseUp, false);
-			canvas.addEventListener('touchcancel', onMouseUp, false);
-			canvas.addEventListener('touchmove', throttle(onMouseMove, 5), false);
+			cursorContext = cursorCanvas.getContext('2d');
+			addBrushListeners();
 			onResize();
-
 			context.fillStyle = "#000000";
 			context.fillRect(0, 0, canvas.width, canvas.height);
+			pickPaintTool(drawType.line);
+			drawCursor();
 		}
 	}
 });
+
 
 Vue.component('users-list-item', {
   props: ['user'],
@@ -137,8 +139,8 @@ const roomType = {
 			dm: 'dm',
 			server: 'server'
 		};
-const defaultAvatar =  'http://www.newdesignfile.com/postpic/2009/09/generic-user-profile_354184.png';
-const serverAvatar = 'http://iconbug.com/data/eb/256/b5d03a8a4fa1d29ab13fa267990bd72c.png';	
+const defaultAvatar = 'images/avatar.png';
+const serverAvatar = 'images/server.png';
 
 var vm = new Vue({
 	el: '#app',
@@ -148,6 +150,7 @@ var vm = new Vue({
 		roomList : {},
 		joinedRooms : [],
 		usersInRoom: [],
+		cursors: {},
 		currentRoom : defaultRoom, //referenced by .name which is unique
 		currentRoomType : roomType.chat
 	},
@@ -168,6 +171,15 @@ var vm = new Vue({
 				}
 			}
 			return vm.usersInRoom; //no room change, old list
+		},
+		purgeOldCursors : function(){
+			var cursor = {};
+			for(var i=0; i < this.usersInRoom.length; i++){
+				if(!this.cursors.hasOwnProperty(this.usersInRoom[i].id)){
+					delete(this.cursors[this.usersInRoom[i].id]);
+				}
+			}
+			return cursor;
 		},
 		chooseRoom : function(aRoom){
 			if(aRoom.id){
@@ -194,20 +206,21 @@ var vm = new Vue({
 			$('#' +this.currentRoom+ '_room').removeClass('inactiveRoom');
 			$('#' +this.currentRoom+ '_messages').show();
 			$('#' +this.currentRoom+ '_canvas').show();
+			$('#' +this.currentRoom+ '_cursor_canvas').show();
 			if(oldRoom != this.currentRoom){
 				$('#' +oldRoom+ '_room').removeClass('activeRoom');
 				$('#' +oldRoom+ '_room').addClass('inactiveRoom');
 				$('#' +oldRoom+ '_messages').hide();
 				$('#' +oldRoom+ '_canvas').hide();
+				$('#' +oldRoom+ '_cursor_canvas').hide();
 			}
 			if(this.currentRoomType == roomType.game){
-				$('#colorPicker').show();
+				$('#canvasControls').show();
 			}else{
-				$('#colorPicker').hide();
+				$('#canvasControls').hide();
 				alignMessageToBottom();
 			}
 			this.usersInRoom = this.getUsersInRoom();
-			
 		},
 		start : function(){
 			$('#nameform').hide();
@@ -240,7 +253,21 @@ var vm = new Vue({
 		}
 	},
 	components: { //don't need these if they are globally registered
-		
+		'help-message' : {
+			template: '<li class="serverHelpMessage">'+ 
+							'<div>' +
+							'<span>Help commands:</span><br/>' +
+							'<span> /help : Displays this list</span><br/>' +
+							'<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>' +
+							'<span> /joingame : Join a game room by entering a room name after the command.</span><br/>' +
+							'<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>' +
+							'<span> /leave : Leave any room by entering the room name.</span><br/>' +
+							'<span> /dm : Start a direct message room by entering the username.</span><br/>' +
+							'<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>' +
+							'<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>' +
+							'</div>' +
+						'</li>'
+		}
 	}, 
 	computed: {
 
@@ -343,8 +370,6 @@ connect = function(name){
 		vm.currentRoom = defaultRoom;
 		vm.toggleActiveRooms(room,vm.currentRoom);
 		removeRoom(room);
-		//$('#'+room+ '_room').remove();
-		//$('#'+room+ '_messages').remove();
 		$('#' +vm.currentRoom+ '_messages').show();
 		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));  /***MESSAGE***/
 		alignMessageToBottom();
@@ -367,15 +392,10 @@ connect = function(name){
 
 	socket.on('users_rooms_list', function(usrList, rooms){ //room name
 		console.log("updating rooms and userlist");
-/* 		for(var r in rooms){
-			console.log(rooms[r]);
-		}
-		for(var u in usrList){
-			console.log(usrList[u]);
-		} */
 		vm.userList = usrList;
 		vm.roomList = rooms;
 		vm.usersInRoom = vm.getUsersInRoom();
+		vm.cursors = vm.purgeOldCursors();
 	});
 	
 	socket.on('force_name_update', function(newName){ //room name
@@ -383,6 +403,8 @@ connect = function(name){
 	});
 	
 	socket.on('drawing', onDrawingEvent);
+	socket.on('track_cursor', ontrackCursor);
+	socket.on('clear_canvas', clearCanvas);
 
 	checkCommand = function (inputval){
 		var inputvalArgs = inputval.split(' ');
@@ -440,7 +462,7 @@ connect = function(name){
 				$('#'+vm.currentRoom+'_messages').append($('<li>').text(socket.username + ":" + message));  /***MESSAGE***/
 				vm.currentRoomType = roomType.dm;
 			}else{
-				$('#'+currentRoom+'_messages').append($('<li>').text('Invalid user.').css('color','red'));  /***MESSAGE***/
+				$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid user.').css('color','red'));  /***MESSAGE***/
 			}
 			clearAndScroll();
 		}else if(inputvalArgs[0]=="name"){
@@ -471,9 +493,23 @@ connect = function(name){
 
 		}else if(inputvalArgs[0]=="help"){
 			$('#'+vm.currentRoom+'_messages').append('<help-message></help-message>');  /***MESSAGE***/
-
+			
+		}else if(inputvalArgs[0]=="secret"){
+			if(inputvalArgs.length < 2){
+				invalidCommand();
+				return;
+			}
+			socket.emit('register_secret', newMsg(socket.id, socket.username, vm.currentRoom, inputvalArgs[1]));
+			
+		}else if(inputvalArgs[0]=="guess"){
+			if(inputvalArgs.length < 2){
+				invalidCommand();
+				return;
+			}
+			socket.emit('guess_secret', newMsg(socket.id, socket.username, vm.currentRoom, inputvalArgs[1]));
+			
 		}else{
-			$('#'+currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
+			$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
 		}
 		clearAndScroll();
 	}
@@ -652,8 +688,40 @@ formatVideoOutput = function(mediaChk){
 	return output;
 }
 
-updateColor = function(){
-	penCursor.color = $('#colorPickerBar')[0].value;
+
+pickPaintTool = function(type){
+	if(type == drawType.line){
+		$('#' +vm.currentRoom+ '_canvas').addClass(drawType.line);
+		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.brush);
+		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.eyedrop);
+		penCursor.type = drawType.line;
+		addLineListeners();
+		removeBrushListeners();
+		removeEyeDropListeners();
+	}else if(type == drawType.brush){
+		$('#' +vm.currentRoom+ '_canvas').addClass(drawType.brush);
+		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.line);
+		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.eyedrop);
+		penCursor.type = drawType.brush;
+		addBrushListeners();
+		removeLineListeners();
+		removeEyeDropListeners();
+	}else if(type == drawType.eyedrop){
+		$('#' +vm.currentRoom+ '_canvas').addClass(drawType.eyedrop);
+		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.line);
+		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.brush);
+		penCursor.type = drawType.eyedrop;
+		addEyeDropListeners();
+		removeLineListeners();
+		removeBrushListeners();
+	}else{
+		
+	}
+}
+
+clearCanvasPre = function(){
+	clearCanvas();
+	socket.emit('clear_canvas',newMsg(socket.id, socket.username, vm.currentRoom));
 }
 
 alignMessageToBottom = function(){

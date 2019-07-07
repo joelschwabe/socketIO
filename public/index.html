@@ -44,9 +44,23 @@
 					></users-list-item>
 				</ul>
 			</div>
-			<div id="colorPicker">
-				<p>Pick Color:</p>
-				<input type="color" id="colorPickerBar" onchange="updateColor()" value="#ff0000" style="width:50%;">
+			<div id="canvasControls">
+				<div id="colorPicker">
+					<p>Pick Color:</p>
+					<input type="color" id="colorPickerBar" onchange="updateColor()" value="#ff0000" style="width:100%;">
+				</div>
+				<div id="lineWidthPicker">
+					<p>Brush Size:</p>
+					<input type="range" min="1" max="100" id="lineWidthBar" value="3" onchange="updatelineWidth()" style="width:100%;">
+				</div>
+				
+				<button id="eyedropTool" onclick="pickPaintTool('eyedrop')">Clone Color</button>
+				<button id="brushTool" onclick="pickPaintTool('brush')">Brush</button>
+				<button id="lineTool" onclick="pickPaintTool('line')">Line</button>
+				<button id="clearCanvas" onclick="clearCanvasPre()">Clear Canvas</button>
+				<div>
+					<p id="cursorCoords"></p>
+				</div>
 			</div>
 		</div>
 		<div id="messageform">

@@ -61,15 +61,17 @@ form button {
 	width: 90%;
     height: 95%;
 	overflow-wrap: break-word;
-    overflow-y: auto;
-	overflow-x: hidden;
 	position: fixed;
-	
+	    overflow-y: auto;
+	overflow-x: hidden;
 	background: linear-gradient(137deg,#6A5076,#290626,#294165);
 	background-size: 300% 300%;
 	-webkit-animation: GradientAnim 22s ease infinite;
 	-moz-animation: GradientAnim 22s ease infinite;
 	animation: GradientAnim 22s ease infinite;
+}
+#messages ul{
+
 }
 @keyframes GradientAnim {
 	0%, 100% {
@@ -121,6 +123,14 @@ form button {
 .game_class{
 	overflow-y: hidden;
 	overflow-x: hidden;
+}
+.cursor_class{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0px;
+	pointer-events: none;
+	z-index: 2;
 }
 .game_message{
 	position: relative;
@@ -193,4 +203,13 @@ form button {
 	margin-top: 15px;
     font-size: medium;
     font-weight: 700;
+}
+.eyedrop{
+	cursor: url('../images/eyedropper.png') 0 56, none;
+}
+.line{
+	cursor: url('../images/pencil.png') 0 56, none;
+}
+.brush{
+	cursor: url('../images/brush.png') 0 56, none;
 }

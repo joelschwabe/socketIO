@@ -18,8 +18,8 @@ const roomType = {
 		dm: 'dm',
 		server: 'server'
 	};
-const defaultAvatar = 'http://www.newdesignfile.com/postpic/2009/09/generic-user-profile_354184.png';
-const serverAvatar = 'http://iconbug.com/data/eb/256/b5d03a8a4fa1d29ab13fa267990bd72c.png';
+const defaultAvatar = 'images/avatar.png';
+const serverAvatar = 'images/server.png';
 // Express Middleware for serving static files
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -28,6 +28,7 @@ app.get('/', function(req, res) {
 });
 
 var userList = [];
+var roomSecret = {}; //{roomName:'secret'}
 
 io.on('connection', function(socket){
 
@@ -50,10 +51,55 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('drawing', function(msg){
-		console.log(msg);
+		//console.log(msg);
 		io.to(msg.room).emit('drawing', msg);
 	});
+	socket.on('clear_canvas', function(msg){
+		//console.log(msg);
+		io.to(msg.room).emit('clear_canvas', msg);
+	});
+	socket.on('track_cursor', function(msg){
+		//console.log(msg);
+		io.to(msg.room).emit('track_cursor', msg);
+	});
+	socket.on('register_secret', function(msg){
+		//console.log(msg);
+		var message = "Secret submitted";
+		var doneSecret = false;
 
+		if(roomSecret.hasOwnProperty(msg.room)){
+			if(roomSecret[msg.room] != null){
+				message = "Cannot change secret until it has been guessed.";
+			}else{
+				roomSecret[msg.room] = msg.msg;
+			}
+			doneSecret = true;
+		}
+
+		if(!doneSecret){
+			roomSecret[msg.room] = msg.msg;
+		}
+		console.log("roomSecret:");
+		console.log(roomSecret);
+		io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,msg.room,message))
+	});
+	socket.on('guess_secret', function(msg){
+		//console.log(msg);
+		var message = 'No secret!';
+		console.log("roomSecret:");
+		console.log(roomSecret);
+
+		if(roomSecret.hasOwnProperty(msg.room)){
+			if(roomSecret[msg.room] == msg.msg){
+				message = "Correct Guess!";
+				roomSecret[msg.room] = null;
+			}else{
+				message = "Incorrect Guess!";
+			}
+		}
+		
+		io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message))
+	});
 	socket.on('debug server', function(){
 		console.log(io);
 		console.log(socket);
@@ -63,29 +109,34 @@ io.on('connection', function(socket){
 
 	socket.on('assign_name', function(msg, avatar){
 		console.log("avatar: " + avatar);
-		if(avatar == null || avatar == undefined){
-			avatar = defaultAvatar
-		}
-		var oldName = socket.username;
-		if(oldName == msg.username){
-			socket.avatar = avatar;
-			addUser(socket.id, socket.username, socket.avatar);
-		}else{
-			msg = checkForDupName(msg);
-			socket.username = msg.username;
-			socket.avatar = avatar;
-			addUser(socket.id, socket.username, socket.avatar);
-			var message;
-			if(oldName == null || (typeof oldName == 'undefined')){
-				message = getName(socket) + " is now chatting!";
-			}else{
-				console.log('a user changed their name:'+ msg.id + ": " + msg.username + ":(room: " + msg.room + ")");
-				message = oldName + " now identifies as '" + getName(socket) +"'!";
+		if(msg.username.length < 50){
+			if(avatar == null || avatar == undefined){
+				avatar = defaultAvatar
 			}
-			io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
-		}
+			var oldName = socket.username;
+			if(oldName == msg.username){
+				socket.avatar = avatar;
+				addUser(socket.id, socket.username, socket.avatar);
+			}else{
+				msg = checkForDupName(msg);
+				socket.username = msg.username;
+				socket.avatar = avatar;
+				addUser(socket.id, socket.username, socket.avatar);
+				var message;
+				if(oldName == null || (typeof oldName == 'undefined')){
+					message = getName(socket) + " is now chatting!";
+				}else{
+					console.log('a user changed their name:'+ msg.id + ": " + msg.username + ":(room: " + msg.room + ")");
+					message = oldName + " now identifies as '" + getName(socket) +"'!";
+				}
+				io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
+			}
 
-		io.emit('users_rooms_list', userList, socket.adapter.rooms);
+			io.emit('users_rooms_list', userList, socket.adapter.rooms);
+		}else{
+			var message = "Nicknames must be less than 50 characters.";
+			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,msg.room,message))		
+		}
 	});
 
 	socket.on('chat_message', function(msg){
@@ -145,22 +196,27 @@ io.on('connection', function(socket){
 				io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 			}
 		}else{
-			if(!pword){
-				console.log("created public " +type+ " room");
-				socket.join(room);
-				socket.adapter.rooms[room].type = type;
-				socket.adapter.rooms[room].name = room;
-				var message = getName(socket) + " created " + type + " " + room;
-				io.to(fromRoom).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
-				io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
-			}else{
-				console.log("created private " +type+ " room:" + pword);
-				socket.join(room);
-				socket.adapter.rooms[room].pword = pword;
-				socket.adapter.rooms[room].type = type;
-				socket.adapter.rooms[room].name = room;
-				io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
+			if(room.length < 50){
+				if(!pword){
+					console.log("created public " +type+ " room");
+					socket.join(room);
+					socket.adapter.rooms[room].type = type;
+					socket.adapter.rooms[room].name = room;
+					var message = getName(socket) + " created " + type + " " + room;
+					io.to(fromRoom).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
+					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
+				}else{
+					console.log("created private " +type+ " room:" + pword);
+					socket.join(room);
+					socket.adapter.rooms[room].pword = pword;
+					socket.adapter.rooms[room].type = type;
+					socket.adapter.rooms[room].name = room;
+					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
 
+				}
+			}else{
+				var message = "Room name must be less than 50 characters.";
+				io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 			}
 		}
 		io.emit('users_rooms_list', userList, socket.adapter.rooms);
