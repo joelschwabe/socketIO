@@ -1,19 +1,3 @@
-/* Vue.component('help-message', {
-	template: '<li class="serverHelpMessage">'+ 
-					'<div>' +
-					'<span>Help commands:</span><br/>' +
-					'<span> /help : Displays this list</span><br/>' +
-					'<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>' +
-					'<span> /joingame : Join a game room by entering a room name after the command.</span><br/>' +
-					'<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>' +
-					'<span> /leave : Leave any room by entering the room name.</span><br/>' +
-					'<span> /dm : Start a direct message room by entering the username.</span><br/>' +
-					'<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>' +
-					'<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>' +
-					'</div>' +
-				'</li>'
-}); */
-
 Vue.component('message-item', {
 	props: ['item'],
 	template: '<li class="serverMessage">{{message}}</li>',
@@ -22,6 +6,10 @@ Vue.component('message-item', {
 			return this.room.name + '_messages';
 		}
 	}
+});
+Vue.component('server-row', {
+	props: ['game'],
+	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.status}}</td></tr>',
 });
 
 Vue.component('rooms-list-item', {
@@ -43,9 +31,16 @@ Vue.component('rooms-list-item', {
 	},
 	created: function () {
 		console.log("element created:" + this);
-		$('#'+this.room.name+'_messages').append($('<li>').text('Joined Room:'+this.room.name).css('color','blue')); /***MESSAGE***/
-		if(this.room.name == defaultRoom){
-			$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
+		if(this.room.name != serverRoom){
+			$('#'+this.room.name+'_messages').append($('<li>').text('Joined Room:'+this.room.name).css('color','blue')); /***MESSAGE***/
+			if(this.room.name == defaultRoom){
+				$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
+			}
+		}else{
+			$('#'+this.room.name+'_messages').append($('<table class="serverTable"><th>Players</th>' +
+				'<th>Name</th><th>Status</th>'+
+				'<server-row v-for="game in allGames" v-bind:game="game"'+	  
+				'v-bind:key="game.name"></server-row></table>'));
 		}
 	},
 	mounted: function () {
@@ -68,14 +63,15 @@ Vue.component('rooms-list-item', {
 Vue.component('message-area', {
 	props: ['room'],
 	template: 	'<div>'+
-				'<div v-if="hasCanvas">' +
-				'<canvas :id="cursorCanvasID" class="cursor_class"></canvas><canvas :id="roomId" :class="roomClass"></canvas>'+
-				'<div :id="gameDivId" :class="roomClass"></div>'+
-				'<ul :id="gameMessages" :class="gameClass"></ul>'+
-				'</div>'+
-				'<div v-else="hasCanvas">' +
-				'<ul :id="roomId" :class="roomClass"></ul>'+
-				'</div>'+
+					'<div v-if="hasCanvas">' +
+						'<canvas :id="cursorCanvasID" class="cursor_class"></canvas>'+
+						'<canvas :id="roomId" :class="roomClass"></canvas>'+
+						'<div :id="gameDivId" :class="roomClass"></div>'+
+						'<ul :id="gameMessages" :class="gameClass"></ul>'+
+					'</div>'+
+					'<div v-else="hasCanvas">' +
+						'<ul :id="roomId" :class="roomClass"></ul>'+
+					'</div>'+
 				'</div>',
 	computed: {
 		roomId: function(){
@@ -139,6 +135,12 @@ const roomType = {
 			dm: 'dm',
 			server: 'server'
 		};
+const gameStatus = {
+			created: 'created',
+			waiting: 'waiting',
+			playing: 'playing',
+			finished: 'finished'
+		};		
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
 
@@ -150,15 +152,17 @@ var vm = new Vue({
 		roomList : {},
 		joinedRooms : [],
 		usersInRoom: [],
+		serverGames: [],
 		cursors: {},
 		currentRoom : defaultRoom, //referenced by .name which is unique
-		currentRoomType : roomType.chat
+		currentRoomType : roomType.chat,
+		formMessage : ''
 	},
 	methods: {
-		getUsersInRoom :  function(){
+		getUsersInRoom :  function(roomName){
 			var roomUsers = [];
 			for(var room in this.roomList){
-				if(this.roomList[room].name == this.currentRoom){
+				if(this.roomList[room].name == roomName){
 					for(var i=0; i < this.userList.length; i++){
 						if(this.roomList[room].sockets.hasOwnProperty(this.userList[i].id)){
 							if(this.userList[i].avatar == null || (typeof this.userList[i].avatar == 'undefined')){
@@ -171,6 +175,19 @@ var vm = new Vue({
 				}
 			}
 			return vm.usersInRoom; //no room change, old list
+		},
+		allGames : function(){
+			var allGames = [];
+			for(var room in this.roomList){	
+				if(this.roomList[room].type == roomType.game){
+					var theseGamers = this.getUsersInRoom(this.roomList[room]);
+					var game = {
+						players: theseGamers,
+						name: this.roomList[room].name,
+						status: this.roomList[room].status
+					}
+				}
+			}
 		},
 		purgeOldCursors : function(){
 			var cursor = {};
@@ -186,12 +203,14 @@ var vm = new Vue({
 				if(this.currentRoom != aRoom.id){
 					var oldRoom = this.currentRoom;
 					this.currentRoom = aRoom.id;
+					this.currentRoomType = roomType[aRoom.type];
 					this.toggleActiveRooms(oldRoom);
 				}
 			}else{ 
 				if(this.currentRoom != aRoom.name){
 					var oldRoom = this.currentRoom;
 					this.currentRoom = aRoom.name;
+					this.currentRoomType = roomType[aRoom.type];
 					this.toggleActiveRooms(oldRoom);
 				}
 			}
@@ -220,7 +239,12 @@ var vm = new Vue({
 				$('#canvasControls').hide();
 				alignMessageToBottom();
 			}
-			this.usersInRoom = this.getUsersInRoom();
+			if(this.currentRoomType == roomType.server){
+				$('#msgForm').prop('disabled', true);
+			}else{
+				$('#msgForm').prop('disabled', false);
+			}
+			this.usersInRoom = this.getUsersInRoom(this.currentRoom);
 		},
 		start : function(){
 			$('#nameform').hide();
@@ -233,7 +257,8 @@ var vm = new Vue({
 			}
 		},
 		sendMessage : function(){
-			var inputval = $('#msgForm').val();
+			//var inputval = $('#msgForm').val();
+			var inputval = vm.formMessage;
 			if(inputval.charAt(0) == '/'){
 				checkCommand(inputval.substring(1, inputval.length)); //trim off '/'
 				return false;
@@ -242,7 +267,8 @@ var vm = new Vue({
 			if(vm.currentRoomType == roomType.dm){ //dm's are only sent to the user dm'd, so we need to keep track of the messages we sent
 				appendText(newMsg(vm.currentRoom, socket.username, vm.currentRoom,inputval));  /***MESSAGE***/
 			}
-			$('#msgForm').val('');
+			//$('#msgForm').val('');
+			vm.formMessage = '';
 			focusCursor('msgForm');
 		},
 		messageEnter : function(event){
@@ -281,19 +307,23 @@ connect = function(name){
 	socket.emit('join_room', defaultRoom,defaultRoom, roomType.chat);
 
 	socket.on('joined_room', function(room){
-		console.log("Joined:" + room.name);
+		//console.log("Joined:" + room.name);
 		vm.joinedRooms.push(room);
 		vm.roomList[room.name] = room; //important
 		var oldRoom = vm.currentRoom;
 		vm.currentRoom = room.name;
 		vm.currentRoomType = roomType[room.type];
-		console.log("Room type:" + vm.currentRoomType);
-		console.log(vm.$refs);
+		//console.log("Room type:" + vm.currentRoomType);
+		//console.log(vm.$refs);
 		vm.toggleActiveRooms(oldRoom);
-		$('#'+room.name+'_messages').append($('<li>').text('Joined Room:'+room.name).css('color','blue')); /***MESSAGE***/
-		if(room.name == defaultRoom){
-			$('#'+room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
-		}
+		// if(room.name != serverRoom){
+			// $('#'+room.name+'_messages').append($('<li>').text('Joined Room:'+room.name).css('color','blue')); /***MESSAGE***/
+			// if(room.name == defaultRoom){
+				// $('#'+room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
+			// }
+		// }else{
+			// buildServerTable();
+		// }
 		focusCursor('msgForm');
 	});
 
@@ -318,12 +348,14 @@ connect = function(name){
 		var urlMsgsToEmbed = [];
 
 		var withBrs = '';
-		var msgTextRecieved = msg.msg.split('\\n');
-		for(var word in msgTextRecieved){
-			withBrs = msgTextRecieved[word] + '<br/>';
+		console.log(msg.msg);
+		var msgTextRecieved = msg.msg.split('\n');
+		console.log(msgTextRecieved);
+		for(var i = 0; i <msgTextRecieved.length; i++){
+			withBrs += msgTextRecieved[i] + '<br/>';
 		}
-		var msgTextRecieved = withBrs.split(' ');
-		
+		msgTextRecieved = withBrs.split(' ');
+		console.log(msgTextRecieved);
 		var msgTextDisplayed = ''; //make as innerHTML later
 		for(var word in msgTextRecieved){
 			if(isUrlValid(msgTextRecieved[word])){
@@ -368,7 +400,7 @@ connect = function(name){
 
 	socket.on('left_room', function(room){
 		vm.currentRoom = defaultRoom;
-		vm.toggleActiveRooms(room,vm.currentRoom);
+		vm.toggleActiveRooms(room);
 		removeRoom(room);
 		$('#' +vm.currentRoom+ '_messages').show();
 		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));  /***MESSAGE***/
@@ -394,7 +426,7 @@ connect = function(name){
 		console.log("updating rooms and userlist");
 		vm.userList = usrList;
 		vm.roomList = rooms;
-		vm.usersInRoom = vm.getUsersInRoom();
+		vm.usersInRoom = vm.getUsersInRoom(vm.currentRoom);
 		vm.cursors = vm.purgeOldCursors();
 	});
 	
@@ -454,7 +486,7 @@ connect = function(name){
 					var oldRoom = vm.currentRoom;
 					vm.currentRoom = userId;
 					vm.joinedRooms.push(newRoom(userId, toUserName, roomType.dm));
-					vm.toggleActiveRooms(oldRoom,vm.currentRoom);
+					vm.toggleActiveRooms(oldRoom);
 				}else{
 					vm.currentRoom = userId;
 				}
@@ -530,6 +562,9 @@ function isUrlValid(userInput) {
         return false;
     else
         return true;
+}
+buildServerTable  = function(){
+	console.log("build server table");
 }
 
 roomExists= function(id){
@@ -773,6 +808,6 @@ focusCursor('nickname');
 
 clearAndScroll = function (){
 	alignMessageToBottom();
-	$('#msgForm').val(null);
+	vm.formMessage = null;
 	focusCursor('msgForm');
 }

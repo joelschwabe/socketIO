@@ -18,6 +18,12 @@ const roomType = {
 		dm: 'dm',
 		server: 'server'
 	};
+const gameStatus = {
+		created: 'created',
+		waiting: 'waiting',
+		playing: 'playing',
+		finished: 'finished'
+	};		
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
 // Express Middleware for serving static files
@@ -144,7 +150,9 @@ io.on('connection', function(socket){
 		console.log(' -username: ' + msg.username);
 		console.log('  -room: ' + msg.room);
 		console.log('   -message: ' + msg.msg);
-		io.to(msg.room).emit('chat_message', msg);
+		if(msg.room != serverRoom){
+			io.to(msg.room).emit('chat_message', msg);
+		}
 	});
 
 	socket.on('join_room', function(room, fromRoom, type, pword){
@@ -202,6 +210,7 @@ io.on('connection', function(socket){
 					socket.join(room);
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
+					socket.adapter.rooms[room].status = gameStatus.created;
 					var message = getName(socket) + " created " + type + " " + room;
 					io.to(fromRoom).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
@@ -211,6 +220,7 @@ io.on('connection', function(socket){
 					socket.adapter.rooms[room].pword = pword;
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
+					socket.adapter.rooms[room].status = gameStatus.created;
 					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
 
 				}

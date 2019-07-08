@@ -64,7 +64,7 @@
 			</div>
 		</div>
 		<div id="messageform">
-		  <textarea id="msgForm" v-on:keydown="messageEnter"></textarea><button id="msgSubmitButton" v-on:click="sendMessage">Send</button>
+		  <textarea id="msgForm" v-on:keydown="messageEnter" v-model="formMessage"></textarea><button id="msgSubmitButton" v-on:click="sendMessage">Send</button>
 		</div>
 	</div>
    </div>

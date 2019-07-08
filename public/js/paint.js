@@ -75,11 +75,11 @@ removeLineListeners = function (){
 	canvas.removeEventListener('mousedown', lineOnMouseDown, false);
 	canvas.removeEventListener('mouseup', lineOnMouseUp, false);
 	canvas.removeEventListener('mouseout', lineOnMouseUp, false);
-	canvas.removeEventListener('mousemove', lineOnMouseMoveThrottle, false);
+	canvas.removeEventListener('mousemove', lineOnMouseMove, false);
 	canvas.removeEventListener('touchstart', lineOnMouseDown, false);
 	canvas.removeEventListener('touchend', lineOnMouseUp, false);
 	canvas.removeEventListener('touchcancel', lineOnMouseUp, false);
-	canvas.removeEventListener('touchmove', lineOnMouseMoveThrottle, false);
+	canvas.removeEventListener('touchmove', lineOnMouseMove, false);
 }
 
 addBrushListeners = function (){
@@ -140,6 +140,43 @@ function drawLine(x0, y0, x1, y1, color, lineWidth,emit){
 	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom,line));
 }
 
+function drawStar(x0, y0, color, lineWidth, p, m, emit){
+	context.beginPath();
+	context.strokeStyle = 'white'; //color of edge
+	context.fillStyle = color; //color of inside
+    context.save();
+    context.translate(x, y);
+    context.moveTo(0,0-lineWidth);
+    for (var i = 0; i < p; i++)
+    {
+        context.rotate(Math.PI / p);
+        context.lineTo(0, 0 - (lineWidth*m));
+        context.rotate(Math.PI / p);
+        context.lineTo(0, 0 - lineWidth);
+    }
+
+    context.fill();
+    context.restore();
+	context.stroke();
+	context.closePath();
+	
+	if (!emit) { return; }
+	var w = canvas.width;
+	var h = canvas.height;
+	var star = {
+		type: drawType.star,
+		x0: x0 / w,
+		y0: y0 / h,
+		lineWidth: lineWidth,
+		p: p,
+		m: m,
+		color: color
+		
+	};
+	
+	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom, star));
+}
+
 function drawBrush(x0, y0, color, lineWidth, emit){
 	context.beginPath();
 	context.strokeStyle = color; //color of edge
@@ -196,7 +233,7 @@ function lineOnMouseMove(e){
 function lineOnMouseUp(e){
 	if (!drawing) { return; }
 	drawing = false;
-	drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, true); //un-needed?
+	//drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, true); //un-needed?
 }
 
 function brushOnMouseDown(e){
@@ -219,8 +256,40 @@ function brushOnMouseMove(e){
 function brushOnMouseUp(e){
 	if (!drawing) { return; }
 	drawing = false;
-	drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, true); //un-needed?
+	//drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, true); //un-needed?
 }
+
+
+
+function onMouseDown(e){
+	drawing = true;
+	penCursor.x = e.clientX||e.touches[0].clientX;
+	penCursor.y = e.clientY||e.touches[0].clientY;
+}
+function onMouseMove(e){
+	if (!drawing) { 
+		penCursor.x = e.clientX||e.touches[0].clientX;
+		penCursor.y = e.clientY||e.touches[0].clientY;
+		trackCursor();
+		return; 
+	}
+	if(penCursor.type == drawType.brush){
+		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
+	}else if(penCursor.type == drawType.line){
+		drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
+	}else if(penCursor.type == drawType.star){
+		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, 6, 0.5, true); //do P and M as inputs later
+	}
+	
+	penCursor.x = e.clientX||e.touches[0].clientX;
+	penCursor.y = e.clientY||e.touches[0].clientY;
+	trackCursor();
+}
+function onMouseUp(e){
+	if (!drawing) { return; }
+	drawing = false;
+}
+
 
 lineOnMouseMoveThrottle = function(){
 	throttle(lineOnMouseMove, 10);
@@ -239,19 +308,21 @@ function onDrawingEvent(msg){
 	if(data.type == drawType.brush){
 		drawBrush(data.x0 * w, data.y0 * h, data.color, data.lineWidth);
 	}
+	if(data.type == drawType.star){
+		drawStar(data.x0 * w, data.y0 * h, data.color, data.lineWidth, data.p, data.m);
+	}
 }
 
 //draw frame for cursor_canvas
 function drawCursor(){
 	cursorContext.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
 	var p = 20;
-	var r = 6;
 	var w = cursorCanvas.width;
 	var h = cursorCanvas.height;
 	for(var c in vm.cursors){
 		var x = vm.cursors[c].msg.x * w;
 		var y = vm.cursors[c].msg.y * h;
-		x += 10;
+		x += 10; //idk why
 		var col = vm.cursors[c].msg.color;
  		cursorContext.beginPath();
 		cursorContext.moveTo(x , y);
@@ -265,11 +336,6 @@ function drawCursor(){
 		cursorContext.strokeStyle = col;
 		cursorContext.lineWidth = 3;
 		cursorContext.stroke(); 
-/* 		cursorContext.beginPath();
-		cursorContext.arc(x+(r*2),y,r,0,2*Math.PI);
-		cursorContext.strokeStyle = col;
-		cursorContext.lineWidth = 3;
-		cursorContext.stroke(); */
 		cursorContext.closePath();
 	}
 	window.requestAnimationFrame(drawCursor);
