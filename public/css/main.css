@@ -16,7 +16,40 @@ body {
 	bottom: 0px;
 	width: 100%;
 }
+.gameMessageAreaContainer{
+	overflow-y: hidden;
+	overflow-x: hidden;
+}
+#emojiPicker{
+	width:25px;
+	height:25px;
+	float:right;
+	top:0px;
+	right:12%;
+	position: absolute;
+}
+ #emojiDiv{
+	display: none;
+	font-size: 25px;
+  	overflow-wrap: break-word;
+    overflow-y: auto;
+	width: 300px;
+	height: 300px;
+    position: absolute;
+    bottom: 100%;
+    right: 10%;
+    background-color: ivory;
+	border-width: 3px;
+    padding: 2px;
+    bottom: 100%;
+    border-color: purple;
+    border-style: solid;
+}
+ #emojiDiv ul{
+	list-style-type: none;
+ }
 #msgForm {
+	display: flex;
 	resize: none;
 	margin: 0px;
 	height:50px;
@@ -24,10 +57,11 @@ body {
 	padding: 5px;
 }
 #msgSubmitButton {
-	float:right;
-	display:inline;
-	height:50px;
+    position: absolute;
+    height: 100%;
 	width: 10%;
+    right: 0px;
+    bottom: 0px;
 }
 #nameform {
 	background: #000;
@@ -141,7 +175,7 @@ form button {
 .game_message{
 	position: relative;
     margin-top: -100px;
-    height: 100px;
+    height: 97px;
     width: 100%;
     overflow-y: auto;
 }
@@ -166,7 +200,7 @@ form button {
 }
 .messageDisplayText{
 	margin-left: 5px;
-    margin-bottom: -5px;
+    margin-bottom: -6px;
 }
 .userListItem{
 	margin-top:10px;

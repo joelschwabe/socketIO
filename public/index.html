@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8"></meta>
     <title>Socket.io w/ Vue.js chat</title>
+	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+	<link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+	<!-- <link rel="stylesheet" href="/css/emojionearea.css" type="text/css"> -->
 	<link rel="stylesheet" href="/css/main.css" type="text/css">
 	   <!-- development version, includes helpful console warnings -->
 	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
@@ -64,12 +68,21 @@
 			</div>
 		</div>
 		<div id="messageform">
-		  <textarea id="msgForm" v-on:keydown="messageEnter" v-model="formMessage"></textarea><button id="msgSubmitButton" v-on:click="sendMessage">Send</button>
+			<div>
+				<textarea id="msgForm" v-on:click="messageSelection" v-on:keydown="messageEnter" v-model="formMessage"></textarea>
+				<div id="emojiPicker" onclick="toggleEmojiPicker()"><img src="../images/emoji.png" style="width:25px;height:25px;"></img></div>
+				<div id ='emojiDiv'>
+					<ul><li id ='emojiLi'></li></ul>
+				</div>
+			</div>
+			<button id="msgSubmitButton" v-on:click="sendMessage">Send</button>
 		</div>
 	</div>
    </div>
 	<script src="/socket.io/socket.io.js"></script>
 	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+	<!-- <script src="/js/emojione.js" type="application/javascript"></script> -->
+	<!-- <script src="/js/emojionearea.js" type="application/javascript"></script> -->
 	<script src="/js/main.js" type="application/javascript"></script>
   <script src="/js/paint.js" type="application/javascript"></script>
   </body>
