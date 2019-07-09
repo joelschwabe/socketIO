@@ -37,6 +37,7 @@ Vue.component('rooms-list-item', {
 				$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
 			}
 		}else{
+			buildServerTable();
 			$('#'+this.room.name+'_messages').append($('<table class="serverTable"><th>Players</th>' +
 				'<th>Name</th><th>Status</th>'+
 				'<server-row v-for="game in allGames" v-bind:game="game"'+	  
@@ -520,14 +521,6 @@ connect = function(name){
 		//console.log("Room type:" + vm.currentRoomType);
 		//console.log(vm.$refs);
 		vm.toggleActiveRooms(oldRoom);
-		// if(room.name != serverRoom){
-			// $('#'+room.name+'_messages').append($('<li>').text('Joined Room:'+room.name).css('color','blue')); /***MESSAGE***/
-			// if(room.name == defaultRoom){
-				// $('#'+room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
-			// }
-		// }else{
-			// buildServerTable();
-		// }
 		focusCursor('msgForm',1);
 	});
 
@@ -929,33 +922,6 @@ formatVideoOutput = function(mediaChk){
 
 
 pickPaintTool = function(type){
-/* 	if(type == drawType.line){
-		$('#' +vm.currentRoom+ '_canvas').addClass(drawType.line);
-		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.brush);
-		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.eyedrop);
-		penCursor.type = drawType.line;
-		addLineListeners();
-		removeBrushListeners();
-		removeEyeDropListeners();
-	}else if(type == drawType.brush){
-		$('#' +vm.currentRoom+ '_canvas').addClass(drawType.brush);
-		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.line);
-		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.eyedrop);
-		penCursor.type = drawType.brush;
-		addBrushListeners();
-		removeLineListeners();
-		removeEyeDropListeners();
-	}else if(type == drawType.eyedrop){
-		$('#' +vm.currentRoom+ '_canvas').addClass(drawType.eyedrop);
-		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.line);
-		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.brush);
-		penCursor.type = drawType.eyedrop;
-		addEyeDropListeners();
-		removeLineListeners();
-		removeBrushListeners();
-	}else{ 
-		
-	} */
 	for(var t in drawType){
 		if(drawType[t] == type){
 			//add class

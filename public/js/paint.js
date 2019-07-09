@@ -12,11 +12,11 @@ var penCursor = {
 	type : drawType.pencil,
 	color: '#ff0000',
 	colorTrim : '#ffffff',
-	width: 2,
+	width: 50,
 	edgeWidth: 1,
-	points: 4,
+	points: 5,
 	startPoint: 0,
-	indent: 0.1,
+	indent: 0.4,
 	mod: 0,
 	x:0,
 	y:0,
@@ -78,6 +78,7 @@ addListeners = function (){
 	canvas.addEventListener('touchend', onMouseUp, false);
 	canvas.addEventListener('touchcancel', onMouseUp, false);
 	canvas.addEventListener('touchmove', onMouseMove, false);
+	canvas.addEventListener('onresize', onResize, false);
 }
 
 onResize = function () {
@@ -114,7 +115,7 @@ function drawPencil(x0, y0, x1, y1, color, width,emit){
 	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom,pencil));
 }
 
-function drawStar(x0, y0, color, colorTrim, width, edgeWidth, points, indent, emit){
+function drawStar(x0, y0, color, colorTrim, width, edgeWidth, points, indent, startPoint, emit){
 	context.save();
 	context.beginPath();
 	context.fillStyle = color; 
@@ -123,6 +124,7 @@ function drawStar(x0, y0, color, colorTrim, width, edgeWidth, points, indent, em
 	context.lineJoin = 'miter';
 	context.miterLimit = 100;
     context.translate(x0, y0);
+	context.rotate(startPoint * Math.PI / 180);
     context.moveTo(0,0-width);
     for (var i = 0; i < points; i++)
     {
@@ -150,6 +152,7 @@ function drawStar(x0, y0, color, colorTrim, width, edgeWidth, points, indent, em
 		edgeWidth: edgeWidth,
 		points: points,
 		indent: indent,
+		startPoint: startPoint,
 		color: color,
 		colorTrim : colorTrim
 	};
@@ -260,7 +263,7 @@ function doDraw(e){
 	}else if(penCursor.type == drawType.pencil){
 		drawPencil(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.width,true);
 	}else if(penCursor.type == drawType.star){
-		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.indent, true); 
+		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.indent, penCursor.startPoint, true); 
 	}else if(penCursor.type == drawType.polygon){
 		drawPolygon(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.startPoint, true); 
 	}
@@ -281,7 +284,7 @@ function onDrawingEvent(msg){
 		drawBrush(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width);
 	}
 	if(data.type == drawType.star){
-		drawStar(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width, data.edgeWidth, data.points, data.indent);
+		drawStar(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width, data.edgeWidth, data.points, data.indent, data.startPoint);
 	}
 	if(data.type == drawType.polygon){
 		drawPolygon(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width, data.edgeWidth, data.points, data.startPoint);
