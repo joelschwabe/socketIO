@@ -963,7 +963,7 @@ pickPaintTool = function(type){
 			$('#' +vm.currentRoom+ '_canvas').addClass(type);
 		}else{
 			//remove
-			$('#' +vm.currentRoom+ '_canvas').removeClass(type);
+			$('#' +vm.currentRoom+ '_canvas').removeClass(drawType[t]);
 		}
 	}
 }

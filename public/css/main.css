@@ -248,9 +248,15 @@ form button {
 .eyedrop{
 	cursor: url('../images/eyedropper.png') 0 56, none;
 }
-.line{
+.pencil{
 	cursor: url('../images/pencil.png') 0 56, none;
 }
 .brush{
 	cursor: url('../images/brush.png') 0 56, none;
+}
+.star{
+	cursor: url('../images/star.png') 0 56, none;
+}
+.polygon{
+	cursor: url('../images/polygon.png') 0 56, none;
 }

@@ -6,14 +6,18 @@ var drawType = {
 	eyedrop: 'eyedrop',
 	star: 'star',
 	line: 'line',
-	rect: 'rect',
-	circle: 'circle'
+	polygon:'polygon'
 };
 var penCursor = {
 	type : drawType.pencil,
 	color: '#ff0000',
 	colorTrim : '#ffffff',
-	lineWidth: 2,
+	width: 2,
+	edgeWidth: 1,
+	points: 4,
+	startPoint: 0,
+	indent: 0.1,
+	mod: 0,
 	x:0,
 	y:0,
 	xh:0,
@@ -42,8 +46,13 @@ updateColor = function(){
 	penCursor.colorTrim = $('#colorPickerTrimBar')[0].value;
 }
 
-updatelineWidth = function(){
-	penCursor.lineWidth = $('#lineWidthBar')[0].value;
+updateModifiers = function(){
+	penCursor.width = $('#widthBar')[0].value;
+	penCursor.points = $('#pointBar')[0].value;
+	penCursor.edgeWidth = $('#edgeWidthBar')[0].value;
+	penCursor.startPoint = $('#startPointBar')[0].value;
+	penCursor.indent = $('#indentBar')[0].value / 100;
+	penCursor.mod = $('#randomBar')[0].value;
 }
 
 colorCloneHandle = function(event) {
@@ -78,16 +87,15 @@ onResize = function () {
 	cursorCanvas.height = (window.innerHeight * 0.95);
 }
 
-function drawPencil(x0, y0, x1, y1, color, lineWidth,emit){
+function drawPencil(x0, y0, x1, y1, color, width,emit){
 	context.beginPath();
-	//context.moveTo(penCursor.xh, penCursor.yh); //historic last drawn end-of-line location
-	//context.lineTo(x0, y0); //reported last cursor location by event handler
-	//context.lineTo(x1, y1); //current event handler location 
+	context.save();
 	context.moveTo(x0, y0);
 	context.lineTo(x1, y1);
 	context.strokeStyle = color;
-	context.lineWidth = lineWidth;
+	context.lineWidth = width;
 	context.stroke();
+	context.restore();	
 	context.closePath();
 
 	if (!emit) { return; }
@@ -100,32 +108,37 @@ function drawPencil(x0, y0, x1, y1, color, lineWidth,emit){
 		x1: x1 / w,
 		y1: y1 / h,
 		color: color,
-		lineWidth: lineWidth
+		width: width
 	};
 	
 	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom,pencil));
 }
 
-function drawStar(x0, y0, color, colorTrim, lineWidth, p, m, emit){
+function drawStar(x0, y0, color, colorTrim, width, edgeWidth, points, indent, emit){
+	context.save();
 	context.beginPath();
-	context.fillStyle = color; //color of inside
-	context.strokeStyle = colorTrim; //color of edge
-    context.save();
+	context.fillStyle = color; 
+	context.strokeStyle = colorTrim; 
+	context.lineWidth = edgeWidth;
+	context.lineJoin = 'miter';
+	context.miterLimit = 100;
     context.translate(x0, y0);
-    context.moveTo(0,0-lineWidth);
-    for (var i = 0; i < p; i++)
+    context.moveTo(0,0-width);
+    for (var i = 0; i < points; i++)
     {
-        context.rotate(Math.PI / p);
-        context.lineTo(0, 0 - (lineWidth*m));
-        context.rotate(Math.PI / p);
-        context.lineTo(0, 0 - lineWidth);
+        context.rotate(Math.PI / points);
+        context.lineTo(0, 0 - (width*indent));
+        context.rotate(Math.PI / points);
+        context.lineTo(0, 0 - width);
     }
-
-    context.fill();
-    context.restore();
-	context.stroke();
 	context.closePath();
+    context.fill();
 	
+	context.stroke();
+	
+    context.restore();	
+	
+
 	if (!emit) { return; }
 	var w = canvas.width;
 	var h = canvas.height;
@@ -133,23 +146,65 @@ function drawStar(x0, y0, color, colorTrim, lineWidth, p, m, emit){
 		type: drawType.star,
 		x0: x0 / w,
 		y0: y0 / h,
-		lineWidth: lineWidth,
-		p: p,
-		m: m,
-		color: color
-		
+		width: width,
+		edgeWidth: edgeWidth,
+		points: points,
+		indent: indent,
+		color: color,
+		colorTrim : colorTrim
 	};
 	
 	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom, star));
 }
 
-function drawBrush(x0, y0, color, lineWidth, emit){
+function drawPolygon(x0, y0, color, colorTrim, width, edgeWidth, points, startPoint, emit) {
+	if (points < 3) return;
 	context.beginPath();
-	context.strokeStyle = color; //color of edge
+	context.save();
+	context.strokeStyle = colorTrim; //color of edge
 	context.fillStyle = color; //color of inside
-	context.arc(x0, y0, lineWidth, 0, 2 * Math.PI);
+	context.lineWidth = edgeWidth;
+	context.lineJoin = 'miter';
+	context.miterLimit = 100;
+	var a = ((Math.PI * 2)/points);
+	context.translate(x0,y0);
+	context.rotate(startPoint * Math.PI / 180);
+	context.moveTo(width,0);
+	for (var i = 1; i <= points; i++) {
+		context.lineTo(width*Math.cos(a*i),width*Math.sin(a*i));
+	}
 	context.fill();
 	context.stroke();
+	context.restore();
+	context.closePath();
+
+	if (!emit) { return; }
+	var w = canvas.width;
+	var h = canvas.height;
+	var polygon = {
+		type: drawType.polygon,
+		x0: x0 / w,
+		y0: y0 / h,
+		width: width,
+		points: points,
+		edgeWidth: edgeWidth,
+		startPoint: startPoint,
+		color: color,
+		colorTrim : colorTrim
+	};
+	
+	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom, polygon));
+}
+
+function drawBrush(x0, y0, color, width, emit){
+	context.beginPath();
+	context.save();
+	context.strokeStyle = color; //color of edge
+	context.fillStyle = color; //color of inside
+	context.arc(x0, y0, width, 0, 2 * Math.PI);
+	context.fill();
+	context.stroke();
+	context.restore();
 	context.closePath();
 
 	if (!emit) { return; }
@@ -160,7 +215,7 @@ function drawBrush(x0, y0, color, lineWidth, emit){
 		x0: x0 / w,
 		y0: y0 / h,
 		color: color,
-		lineWidth: lineWidth
+		width: width
 	};
 	
 	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom,splotch));
@@ -181,26 +236,17 @@ function trackCursor() {
 
 function onMouseDown(e){
 	drawing = true;
-	penCursor.x = e.clientX||e.touches[0].clientX;
-	penCursor.y = e.clientY||e.touches[0].clientY;
+	trackPen(e);
+	doDraw(e);
 }
 function onMouseMove(e){
 	if (!drawing) { 
-		penCursor.x = e.clientX||e.touches[0].clientX;
-		penCursor.y = e.clientY||e.touches[0].clientY;
+		trackPen(e);
 		trackCursor();
 		return; 
 	}
-	if(penCursor.type == drawType.brush){
-		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
-	}else if(penCursor.type == drawType.pencil){
-		drawPencil(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
-	}else if(penCursor.type == drawType.star){
-		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.lineWidth, 6, 1, true); //do P and M as inputs later
-	}
-	
-	penCursor.x = e.clientX||e.touches[0].clientX;
-	penCursor.y = e.clientY||e.touches[0].clientY;
+	doDraw(e);
+	trackPen(e)
 	trackCursor();
 }
 function onMouseUp(e){
@@ -208,19 +254,37 @@ function onMouseUp(e){
 	drawing = false;
 }
 
+function doDraw(e){
+	if(penCursor.type == drawType.brush){
+		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.width,true);
+	}else if(penCursor.type == drawType.pencil){
+		drawPencil(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.width,true);
+	}else if(penCursor.type == drawType.star){
+		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.indent, true); 
+	}else if(penCursor.type == drawType.polygon){
+		drawPolygon(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.startPoint, true); 
+	}
+}
+function trackPen(e){
+	penCursor.x = e.clientX||e.touches[0].clientX;
+	penCursor.y = e.clientY||e.touches[0].clientY;
+}
 
 function onDrawingEvent(msg){
 	var w = canvas.width;
 	var h = canvas.height;
 	var data = msg.msg;
 	if(data.type == drawType.pencil){
-		drawPencil(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.lineWidth);
+		drawPencil(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.width);
 	}
 	if(data.type == drawType.brush){
-		drawBrush(data.x0 * w, data.y0 * h, data.color, data.lineWidth);
+		drawBrush(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width);
 	}
 	if(data.type == drawType.star){
-		drawStar(data.x0 * w, data.y0 * h, data.color, data.lineWidth, data.p, data.m);
+		drawStar(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width, data.edgeWidth, data.points, data.indent);
+	}
+	if(data.type == drawType.polygon){
+		drawPolygon(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width, data.edgeWidth, data.points, data.startPoint);
 	}
 }
 
@@ -235,7 +299,7 @@ function drawCursor(){
 		var y = vm.cursors[c].msg.y * h;
 		x += 10; //idk why
 		var col = vm.cursors[c].msg.color;
- 		cursorContext.beginPath();
+ 		cursorContext.beginPath(); //draw crosshair
 		cursorContext.moveTo(x , y);
 		cursorContext.lineTo(x - p, y);
 		cursorContext.moveTo(x , y);
@@ -245,7 +309,7 @@ function drawCursor(){
 		cursorContext.moveTo(x , y);
 		cursorContext.lineTo(x , y + p);
 		cursorContext.strokeStyle = col;
-		cursorContext.lineWidth = 3;
+		cursorContext.lineWidth = 2;
 		cursorContext.stroke(); 
 		cursorContext.closePath();
 	}

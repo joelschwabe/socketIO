@@ -57,13 +57,33 @@
 					<p>Edge Color</p>
 					<input type="color" id="colorPickerTrimBar" onchange="updateColor()" value="#ffffff" style="width:100%;">
 				</div>
-				<div id="lineWidthPicker">
-					<p>Brush Size:</p>
-					<input type="range" min="1" max="100" id="lineWidthBar" value="3" onchange="updatelineWidth()" style="width:100%;">
+				<div id="widthPicker">
+					<p>Width:</p>
+					<input type="range" min="1" max="250" id="widthBar" value="50" onchange="updateModifiers()" style="width:100%;">
 				</div>
-				
+				<div id="edgeWidthPicker">
+					<p>Edge Width:</p>
+					<input type="range" min="1" max="20" id="edgeWidthBar" value="3" onchange="updateModifiers()" style="width:100%;">
+				</div>
+				<div id="startPointPicker">
+					<p>Starting Degree:</p>
+					<input type="number" min="0" max="360" id="startPointBar" value="0" onchange="updateModifiers()" style="width:100%;">
+				</div>				
+				<div id="pointPicker">
+					<p>Points:</p>
+					<input type="range" min="1" max="20" id="pointBar" value="5" onchange="updateModifiers()" style="width:100%;">
+				</div>
+				<div id="indentPicker">
+					<p>Indent Amount:</p>
+					<input type="range" min="1" max="100" id="indentBar" value="40" onchange="updateModifiers()" style="width:100%;">
+				</div>
+				<div id="randomPicker">
+					<p>Random Influence:</p>
+					<input type="range" min="0" max="100" id="randomBar" value="0" onchange="updateModifiers()" style="width:100%;">
+				</div>
 				<button id="eyedropTool" onclick="pickPaintTool('eyedrop')">Clone Color</button>
-				<button id="eyedropTool" onclick="pickPaintTool('star')">Star</button>
+				<button id="starTool" onclick="pickPaintTool('star')">Star</button>
+				<button id="polygonTool" onclick="pickPaintTool('polygon')">Polygon</button>
 				<button id="brushTool" onclick="pickPaintTool('brush')">Brush</button>
 				<button id="lineTool" onclick="pickPaintTool('pencil')">Pencil</button>
 				<button id="clearCanvas" onclick="clearCanvasPre()">Clear Canvas</button>
