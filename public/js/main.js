@@ -736,7 +736,13 @@ connect = function(name){
 				return;
 			}
 			socket.emit('guess_secret', newMsg(socket.id, socket.username, vm.currentRoom, inputvalArgs[1]));
-			
+		}else if(inputvalArgs[0]=="start"){
+			if(vm.currentRoomType != roomType.game){
+				invalidCommand();
+				return;
+			}
+			socket.emit('start_game', newMsg(socket.id, socket.username, vm.currentRoom));
+						
 		}else{
 			$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
 		}

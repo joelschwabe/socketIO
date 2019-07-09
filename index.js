@@ -6,7 +6,8 @@ var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 
 const port = 3000;
-const maxUsersPerGameRoom = 4;
+const minUsersPerGameRoom = 2;
+const maxUsersPerGameRoom = 6;
 const maxUsersPerChatRoom = 50;
 const defaultRoom = 'General';
 const serverRoom = 'Servers';
@@ -23,6 +24,11 @@ const gameStatus = {
 		waiting: 'waiting',
 		playing: 'playing',
 		finished: 'finished'
+	};		
+const playerStatus = {
+		idle: 'idle',
+		ready: 'ready',
+		playing: 'playing'
 	};		
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
@@ -59,6 +65,34 @@ io.on('connection', function(socket){
 	socket.on('drawing', function(msg){
 		//console.log(msg);
 		io.to(msg.room).emit('drawing', msg);
+	});
+	socket.on('user_status_update', function(msg){
+		if(msg.msg in playerStatus){
+			socket.adapter.rooms[msg.room].playerStatus[msg.id] = msg.msg;
+			if(socket.adapter.rooms[msg.room].playerStatus.keys.length >= minUsersPerGameRoom){
+				var playersReady = true;
+				for(var player in socket.adapter.rooms[msg.room].playerStatus){
+					if(socket.adapter.rooms[msg.room].playerStatus[player] != playerStatus.ready){
+						playersReady = false;
+					}
+				}
+				if(playersReady){
+					socket.adapter.rooms[msg.room].roomStatus = gameStatus.ready;
+					io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
+				}
+			}
+		}
+	}
+	socket.on('start_game', function(msg){
+		var message = '';
+		if(socket.adapter.rooms[msg.room].roomStatus == gameStatus.ready){
+			message = "Starting Game...";
+			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,null,message));
+			io.to(msg.room).emit('start_game', xxxxx); //what to send for start game???
+		}else{
+			message = "Unable to start game. Game not in ready state.!";
+			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,null,message));
+		}
 	});
 	socket.on('clear_canvas', function(msg){
 		//console.log(msg);
@@ -210,7 +244,7 @@ io.on('connection', function(socket){
 					socket.join(room);
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
-					socket.adapter.rooms[room].status = gameStatus.created;
+					socket.adapter.rooms[room].roomStatus = gameStatus.created;
 					var message = getName(socket) + " created " + type + " " + room;
 					io.to(fromRoom).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
@@ -220,7 +254,7 @@ io.on('connection', function(socket){
 					socket.adapter.rooms[room].pword = pword;
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
-					socket.adapter.rooms[room].status = gameStatus.created;
+					socket.adapter.rooms[room].roomStatus = gameStatus.created;
 					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
 
 				}

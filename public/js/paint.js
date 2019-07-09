@@ -36,6 +36,12 @@ function throttle(callback, delay) {
 	};
 }
 
+getCanvas = function(){
+	var image = new Image();
+	image.src = canvas.toDataURL(); 
+	return image; //base64 image
+}
+
 clearCanvas = function(){
 	context.fillStyle = "#000000";
 	context.fillRect(0, 0, canvas.width, canvas.height);
