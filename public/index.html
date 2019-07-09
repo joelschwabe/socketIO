@@ -50,8 +50,12 @@
 			</div>
 			<div id="canvasControls">
 				<div id="colorPicker">
-					<p>Pick Color:</p>
+					<p>Fill Color</p>
 					<input type="color" id="colorPickerBar" onchange="updateColor()" value="#ff0000" style="width:100%;">
+				</div>
+				<div id="colorPickerTrim">
+					<p>Edge Color</p>
+					<input type="color" id="colorPickerTrimBar" onchange="updateColor()" value="#ffffff" style="width:100%;">
 				</div>
 				<div id="lineWidthPicker">
 					<p>Brush Size:</p>
@@ -59,8 +63,9 @@
 				</div>
 				
 				<button id="eyedropTool" onclick="pickPaintTool('eyedrop')">Clone Color</button>
+				<button id="eyedropTool" onclick="pickPaintTool('star')">Star</button>
 				<button id="brushTool" onclick="pickPaintTool('brush')">Brush</button>
-				<button id="lineTool" onclick="pickPaintTool('line')">Line</button>
+				<button id="lineTool" onclick="pickPaintTool('pencil')">Pencil</button>
 				<button id="clearCanvas" onclick="clearCanvasPre()">Clear Canvas</button>
 				<div>
 					<p id="cursorCoords"></p>

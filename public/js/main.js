@@ -108,11 +108,11 @@ Vue.component('message-area', {
 			cursorCanvas = document.getElementById(this.room.name+'_cursor_canvas');
 			context = canvas.getContext('2d');
 			cursorContext = cursorCanvas.getContext('2d');
-			addBrushListeners();
+			addListeners();
 			onResize();
 			context.fillStyle = "#000000";
 			context.fillRect(0, 0, canvas.width, canvas.height);
-			pickPaintTool(drawType.line);
+			pickPaintTool(drawType.pencil);
 			drawCursor();
 		}
 	}
@@ -929,7 +929,7 @@ formatVideoOutput = function(mediaChk){
 
 
 pickPaintTool = function(type){
-	if(type == drawType.line){
+/* 	if(type == drawType.line){
 		$('#' +vm.currentRoom+ '_canvas').addClass(drawType.line);
 		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.brush);
 		$('#' +vm.currentRoom+ '_canvas').removeClass(drawType.eyedrop);
@@ -953,8 +953,18 @@ pickPaintTool = function(type){
 		addEyeDropListeners();
 		removeLineListeners();
 		removeBrushListeners();
-	}else{
+	}else{ 
 		
+	} */
+	for(var t in drawType){
+		if(drawType[t] == type){
+			//add class
+			penCursor.type = type;
+			$('#' +vm.currentRoom+ '_canvas').addClass(type);
+		}else{
+			//remove
+			$('#' +vm.currentRoom+ '_canvas').removeClass(type);
+		}
 	}
 }
 

@@ -2,12 +2,17 @@ var canvas, context, cursorCanvas, cursorContext;
 var drawing = false;
 var drawType = {
 	brush: 'brush',
+	pencil: 'pencil',
+	eyedrop: 'eyedrop',
+	star: 'star',
 	line: 'line',
-	eyedrop: 'eyedrop'
+	rect: 'rect',
+	circle: 'circle'
 };
 var penCursor = {
-	type : drawType.line,
+	type : drawType.pencil,
 	color: '#ff0000',
+	colorTrim : '#ffffff',
 	lineWidth: 2,
 	x:0,
 	y:0,
@@ -34,6 +39,7 @@ clearCanvas = function(){
 
 updateColor = function(){
 	penCursor.color = $('#colorPickerBar')[0].value;
+	penCursor.colorTrim = $('#colorPickerTrimBar')[0].value;
 }
 
 updatelineWidth = function(){
@@ -54,55 +60,15 @@ colorCloneHandle = function(event) {
 	updateColor();
 }
 
-addEyeDropListeners = function (){
-	canvas.addEventListener('mousedown', colorCloneHandle, false);
-}
-removeEyeDropListeners = function (){
-	canvas.removeEventListener('mousedown', colorCloneHandle, false);
-}
-addLineListeners = function (){
-	canvas.addEventListener('mousedown', lineOnMouseDown, false);
-	canvas.addEventListener('mouseup', lineOnMouseUp, false);
-	canvas.addEventListener('mouseout', lineOnMouseUp, false);
-	canvas.addEventListener('mousemove', lineOnMouseMove, false);
-	canvas.addEventListener('touchstart', lineOnMouseDown, false);
-	canvas.addEventListener('touchend', lineOnMouseUp, false);
-	canvas.addEventListener('touchcancel', lineOnMouseUp, false);
-	canvas.addEventListener('touchmove', lineOnMouseMove, false);
-}
-
-removeLineListeners = function (){
-	canvas.removeEventListener('mousedown', lineOnMouseDown, false);
-	canvas.removeEventListener('mouseup', lineOnMouseUp, false);
-	canvas.removeEventListener('mouseout', lineOnMouseUp, false);
-	canvas.removeEventListener('mousemove', lineOnMouseMove, false);
-	canvas.removeEventListener('touchstart', lineOnMouseDown, false);
-	canvas.removeEventListener('touchend', lineOnMouseUp, false);
-	canvas.removeEventListener('touchcancel', lineOnMouseUp, false);
-	canvas.removeEventListener('touchmove', lineOnMouseMove, false);
-}
-
-addBrushListeners = function (){
-	canvas.addEventListener('mousedown', brushOnMouseDown, false);
-	canvas.addEventListener('mouseup', brushOnMouseUp, false);
-	canvas.addEventListener('mouseout', brushOnMouseUp, false);
-	canvas.addEventListener('mousemove', brushOnMouseMove, false);
-	canvas.addEventListener('touchstart', brushOnMouseDown, false);
-	canvas.addEventListener('touchend', brushOnMouseUp, false);
-	canvas.addEventListener('touchcancel', brushOnMouseUp, false);
-	canvas.addEventListener('touchmove', brushOnMouseMove, false);
-	
-}
-
-removeBrushListeners = function(){
-	canvas.removeEventListener('mousedown', brushOnMouseDown, false);
-	canvas.removeEventListener('mouseup', brushOnMouseUp, false);
-	canvas.removeEventListener('mouseout', brushOnMouseUp, false);
-	canvas.removeEventListener('mousemove', brushOnMouseMove, false);
-	canvas.removeEventListener('touchstart', brushOnMouseDown, false);
-	canvas.removeEventListener('touchend', brushOnMouseUp, false);
-	canvas.removeEventListener('touchcancel', brushOnMouseUp, false);
-	canvas.removeEventListener('touchmove', brushOnMouseMove, false);
+addListeners = function (){
+	canvas.addEventListener('mousedown', onMouseDown, false);
+	canvas.addEventListener('mouseup', onMouseUp, false);
+	canvas.addEventListener('mouseout', onMouseUp, false);
+	canvas.addEventListener('mousemove', onMouseMove, false);
+	canvas.addEventListener('touchstart', onMouseDown, false);
+	canvas.addEventListener('touchend', onMouseUp, false);
+	canvas.addEventListener('touchcancel', onMouseUp, false);
+	canvas.addEventListener('touchmove', onMouseMove, false);
 }
 
 onResize = function () {
@@ -112,7 +78,7 @@ onResize = function () {
 	cursorCanvas.height = (window.innerHeight * 0.95);
 }
 
-function drawLine(x0, y0, x1, y1, color, lineWidth,emit){
+function drawPencil(x0, y0, x1, y1, color, lineWidth,emit){
 	context.beginPath();
 	//context.moveTo(penCursor.xh, penCursor.yh); //historic last drawn end-of-line location
 	//context.lineTo(x0, y0); //reported last cursor location by event handler
@@ -127,8 +93,8 @@ function drawLine(x0, y0, x1, y1, color, lineWidth,emit){
 	if (!emit) { return; }
 	var w = canvas.width;
 	var h = canvas.height;
-	var line = {
-		type: drawType.line,
+	var pencil = {
+		type: drawType.pencil,
 		x0: x0 / w,
 		y0: y0 / h,
 		x1: x1 / w,
@@ -137,15 +103,15 @@ function drawLine(x0, y0, x1, y1, color, lineWidth,emit){
 		lineWidth: lineWidth
 	};
 	
-	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom,line));
+	socket.emit('drawing',newMsg(socket.id, socket.username, vm.currentRoom,pencil));
 }
 
-function drawStar(x0, y0, color, lineWidth, p, m, emit){
+function drawStar(x0, y0, color, colorTrim, lineWidth, p, m, emit){
 	context.beginPath();
-	context.strokeStyle = 'white'; //color of edge
 	context.fillStyle = color; //color of inside
+	context.strokeStyle = colorTrim; //color of edge
     context.save();
-    context.translate(x, y);
+    context.translate(x0, y0);
     context.moveTo(0,0-lineWidth);
     for (var i = 0; i < p; i++)
     {
@@ -213,54 +179,6 @@ function trackCursor() {
 	socket.emit('track_cursor',newMsg(socket.id, socket.username, vm.currentRoom,cursor));
 }
 
-function lineOnMouseDown(e){
-	drawing = true;
-	penCursor.x = e.clientX||e.touches[0].clientX;
-	penCursor.y = e.clientY||e.touches[0].clientY;
-}
-function lineOnMouseMove(e){
-	if (!drawing) { 
-		penCursor.x = e.clientX||e.touches[0].clientX;
-		penCursor.y = e.clientY||e.touches[0].clientY;
-		trackCursor();
-		return; 
-	}
-	drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
-	penCursor.x = e.clientX||e.touches[0].clientX;
-	penCursor.y = e.clientY||e.touches[0].clientY;
-	trackCursor();
-}
-function lineOnMouseUp(e){
-	if (!drawing) { return; }
-	drawing = false;
-	//drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, true); //un-needed?
-}
-
-function brushOnMouseDown(e){
-	drawing = true;
-	penCursor.x = e.clientX||e.touches[0].clientX;
-	penCursor.y = e.clientY||e.touches[0].clientY;
-}
-function brushOnMouseMove(e){
-	if (!drawing) { 
-		penCursor.x = e.clientX||e.touches[0].clientX;
-		penCursor.y = e.clientY||e.touches[0].clientY;
-		trackCursor();
-		return; 
-	}
-	drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
-	penCursor.x = e.clientX||e.touches[0].clientX;
-	penCursor.y = e.clientY||e.touches[0].clientY;
-	trackCursor();
-}
-function brushOnMouseUp(e){
-	if (!drawing) { return; }
-	drawing = false;
-	//drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, true); //un-needed?
-}
-
-
-
 function onMouseDown(e){
 	drawing = true;
 	penCursor.x = e.clientX||e.touches[0].clientX;
@@ -275,10 +193,10 @@ function onMouseMove(e){
 	}
 	if(penCursor.type == drawType.brush){
 		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
-	}else if(penCursor.type == drawType.line){
-		drawLine(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
+	}else if(penCursor.type == drawType.pencil){
+		drawPencil(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth,true);
 	}else if(penCursor.type == drawType.star){
-		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.lineWidth, 6, 0.5, true); //do P and M as inputs later
+		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.lineWidth, 6, 1, true); //do P and M as inputs later
 	}
 	
 	penCursor.x = e.clientX||e.touches[0].clientX;
@@ -291,19 +209,12 @@ function onMouseUp(e){
 }
 
 
-lineOnMouseMoveThrottle = function(){
-	throttle(lineOnMouseMove, 10);
-}
-brushOnMouseMoveThrottle = function(){
-	throttle(brushOnMouseMove, 10);
-}
-
 function onDrawingEvent(msg){
 	var w = canvas.width;
 	var h = canvas.height;
 	var data = msg.msg;
-	if(data.type == drawType.line){
-		drawLine(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.lineWidth);
+	if(data.type == drawType.pencil){
+		drawPencil(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.lineWidth);
 	}
 	if(data.type == drawType.brush){
 		drawBrush(data.x0 * w, data.y0 * h, data.color, data.lineWidth);
