@@ -512,14 +512,11 @@ connect = function(name){
 	socket.emit('join_room', defaultRoom,defaultRoom, roomType.chat);
 
 	socket.on('joined_room', function(room){
-		//console.log("Joined:" + room.name);
 		vm.joinedRooms.push(room);
 		vm.roomList[room.name] = room; //important
 		var oldRoom = vm.currentRoom;
 		vm.currentRoom = room.name;
 		vm.currentRoomType = roomType[room.type];
-		//console.log("Room type:" + vm.currentRoomType);
-		//console.log(vm.$refs);
 		vm.toggleActiveRooms(oldRoom);
 		focusCursor('msgForm',1);
 	});
@@ -603,7 +600,19 @@ connect = function(name){
 		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));  /***MESSAGE***/
 		alignMessageToBottom();
 	});
-
+	socket.on('get_canvas', function(msg){
+		var cImage = new Image({});
+		cImage.src = canvas.toDataURL(); 
+		cImage.addEventListener('load', sendCanvas(msg,cImage.src))
+		
+	});
+	socket.on('canvas_deliver', function(msg){
+		fillCanvas(msg.msg);
+	});
+	
+	sendCanvas = function(msg,cImage){
+		socket.emit('got_canvas', newMsg(msg.id, msg.username, msg.room, cImage));
+	}
 	removeRoom = function(name){
 		console.log("remove room: "+name);
 		var remove = false;
@@ -742,7 +751,13 @@ connect = function(name){
 				return;
 			}
 			socket.emit('start_game', newMsg(socket.id, socket.username, vm.currentRoom));
-						
+		}else if(inputvalArgs[0]=="status"){
+			if(inputvalArgs.length == 2 ){
+				socket.emit('user_status_update', newMsg(socket.id, socket.username, vm.currentRoom, inputvalArgs[1]));
+			}else{
+				invalidCommand();
+				return;
+			}				
 		}else{
 			$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
 		}

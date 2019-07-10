@@ -36,10 +36,12 @@ function throttle(callback, delay) {
 	};
 }
 
-getCanvas = function(){
-	var image = new Image();
-	image.src = canvas.toDataURL(); 
-	return image; //base64 image
+fillCanvas = function(canvasImage){
+	var cImage = new Image();
+	cImage.src = canvasImage;
+	cImage.onload = function(){
+		context.drawImage(cImage, 0, 0);
+	}
 }
 
 clearCanvas = function(){
@@ -272,6 +274,8 @@ function doDraw(e){
 		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.indent, penCursor.startPoint, true); 
 	}else if(penCursor.type == drawType.polygon){
 		drawPolygon(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.startPoint, true); 
+	}else if(penCursor.type == drawType.eyedrop){
+		colorCloneHandle(e);
 	}
 }
 function trackPen(e){
@@ -287,7 +291,7 @@ function onDrawingEvent(msg){
 		drawPencil(data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.width);
 	}
 	if(data.type == drawType.brush){
-		drawBrush(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width);
+		drawBrush(data.x0 * w, data.y0 * h, data.color, data.width);
 	}
 	if(data.type == drawType.star){
 		drawStar(data.x0 * w, data.y0 * h, data.color, data.colorTrim, data.width, data.edgeWidth, data.points, data.indent, data.startPoint);
