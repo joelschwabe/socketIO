@@ -48,12 +48,6 @@ Vue.component('rooms-list-item', {
 			if(this.room.name == defaultRoom){
 				$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
 			}
-		}else{
-			/* buildServerTable();
-			$('#'+this.room.name+'_messages').append($('<table class="serverTable"><th>Players</th>' +
-				'<th>Name</th><th>Status</th>'+
-				'<server-row v-for="game in allGames" v-bind:game="game"'+	  
-				'v-bind:key="game.name"></server-row></table>')); */
 		}
 	},
 	mounted: function () {
@@ -79,7 +73,7 @@ Vue.component('message-area', {
 					'<div v-if="hasCanvas && !isServer" class="gameMessageAreaContainer">' +
 						'<canvas :id="cursorCanvasID" class="cursor_class"></canvas>'+
 						'<canvas :id="roomId" :class="roomClass"></canvas>'+
-						'<div :id="gameDivId" :class="roomClass"></div>'+
+						'<div :id="gameDivId" :class="gameDivClass"></div>'+
 						'<ul :id="gameMessages" :class="gameClass"></ul>'+
 					'</div>'+
 					'<div v-else="!hasCanvas && !isServer">' +
@@ -98,6 +92,9 @@ Vue.component('message-area', {
 		},
 		roomClass: function(){
 			return this.room.type + '_class';
+		},
+		gameDivClass: function(){
+			return this.room.type + '_class' + ' gameDivClass';
 		},
 		gameMessages : function(){
 			return this.room.name + '_messages';
@@ -950,6 +947,10 @@ formatVideoOutput = function(mediaChk){
 	return output;
 }
 
+createGame = function(){
+	var room = generateGameRoomName();
+	socket.emit('join_room', room, vm.currentRoom, roomType.game);
+}
 
 pickPaintTool = function(type){
 	for(var t in drawType){
