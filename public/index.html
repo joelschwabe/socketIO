@@ -16,11 +16,28 @@
 	<div id="startup">
 		<div id="nameform">
 		  <span>Please enter a nickname:</span>
-		  <input id="nickname" autocomplete="off" v-model="nickname" v-on:keydown="nicknameEnter"/><button v-on:click="start">Join</button>
+		  <input id="nickname" autocomplete="off" minlength="3" maxlength="49" v-model="nickname" v-on:keydown="nicknameEnter"/><button v-on:click="start">Join</button>
 		</div>
 	</div>
 	<div id="main">
 		<div id="messages">
+		<div class="messageAreaContainer">
+			<div id="Servers_messages" class="server_class">
+			<table class="serverTable">
+			<tr>
+				<th>Players</th>
+				<th>Name</th>
+				<th>Status</th>
+				<th>Join</th>
+			</tr>
+			<tr is="server-row" 
+				v-for="game in allGames" 
+				v-bind:game="game"	
+				v-bind:key="game.name">
+			</tr>
+			</table>
+			</div>
+		</div>
 			<message-area
 			  v-for="room in joinedRooms"
 			  v-bind:room="room"

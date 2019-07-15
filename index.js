@@ -6,7 +6,7 @@ var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 
 const port = 3000;
-const minUsersPerGameRoom = 2;
+const minUsersPerGameRoom = 3;
 const maxUsersPerGameRoom = 6;
 const maxUsersPerChatRoom = 50;
 const defaultRoom = 'General';
@@ -22,6 +22,7 @@ const roomType = {
 const gameStatus = {
 		created: 'created',
 		waiting: 'waiting',
+		ready: 'ready',
 		playing: 'playing',
 		finished: 'finished'
 	};		
@@ -40,6 +41,7 @@ app.get('/', function(req, res) {
 });
 
 var userList = [];
+var gamelist = [];
 var roomSecret = {}; //{roomName:'secret'}
 
 io.on('connection', function(socket){
@@ -63,10 +65,10 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('drawing', function(msg){
-		//console.log(msg);
 		io.to(msg.room).emit('drawing', msg);
 	});
 	socket.on('user_status_update', function(msg){
+		if(!socket.adapter.rooms[msg.room]){return}
 		console.log("user status update");
 		console.log(msg);
 		console.log(socket.adapter.rooms[msg.room].type);
@@ -75,18 +77,31 @@ io.on('connection', function(socket){
 				socket.adapter.rooms[msg.room].playerStatus[msg.id] = msg.msg;
 				console.log("Status updated");
 				console.log(socket.adapter.rooms[msg.room].playerStatus[msg.id]);
+				var statusN = '';
 				if(Object.keys(socket.adapter.rooms[msg.room].playerStatus).length >= minUsersPerGameRoom){
 					var playersReady = true;
 					for(var player in socket.adapter.rooms[msg.room].playerStatus){
+						console.log(playerStatus.ready)
+						console.log(socket.adapter.rooms[msg.room].playerStatus[player]);
 						if(socket.adapter.rooms[msg.room].playerStatus[player] != playerStatus.ready){
 							playersReady = false;
+							console.log('all players not ready');
 						}
 					}
 					if(playersReady){
 						console.log("Game ready");
-						socket.adapter.rooms[msg.room].roomStatus = gameStatus.ready;
-						io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
+						statusN = gameStatus.ready;
+					}else{
+						console.log("Game waiting");
+						statusN = gameStatus.waiting;
 					}
+					socket.adapter.rooms[msg.room].roomStatus = statusN;
+					io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
+				}else{
+					console.log("Game waiting");
+					statusN = gameStatus.waiting;
+					socket.adapter.rooms[msg.room].roomStatus = statusN;
+					io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
 				}
 			}
 		}
@@ -154,10 +169,10 @@ io.on('connection', function(socket){
 		console.log(socket.adapter.rooms);
 		console.log(userList);
 	});
-
+	
 	socket.on('assign_name', function(msg, avatar){
 		console.log("avatar: " + avatar);
-		if(msg.username.length < 50){
+		if(msg.username.length <= 40){
 			if(avatar == null || avatar == undefined){
 				avatar = defaultAvatar
 			}
@@ -182,7 +197,7 @@ io.on('connection', function(socket){
 
 			io.emit('users_rooms_list', userList, socket.adapter.rooms);
 		}else{
-			var message = "Nicknames must be less than 50 characters.";
+			var message = "Nicknames must 40 characters or less.";
 			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,msg.room,message))		
 		}
 	});
@@ -203,6 +218,10 @@ io.on('connection', function(socket){
 	});
 	
 	socket.on('join_room', function(room, fromRoom, type, pword){
+		if(!room){
+			console.log('no room name');
+			return
+		};
 		var maxUsersPerRoom;
 		var gotCanvas = false;
 		if(type == roomType.game){
@@ -211,6 +230,11 @@ io.on('connection', function(socket){
 			maxUsersPerRoom = maxUsersPerChatRoom;
 		}else{
 			maxUsersPerRoom = 9999;//or something
+		}
+		if(room.length < 1){
+			var message = "Must have a room name.";
+			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
+			return;
 		}
 		if(socket.adapter.rooms.hasOwnProperty(room)){
 			console.log("room exists");
@@ -277,6 +301,8 @@ io.on('connection', function(socket){
 					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
 
 				}
+				updateGameList(socket);
+				io.emit('update_game_list', gamelist);
 			}else{
 				var message = "Room name must be less than 50 characters.";
 				io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
@@ -334,6 +360,20 @@ io.on('connection', function(socket){
 	}
 
 });
+
+updateGameList = function(socket){
+	gamelist = [];
+	for(var room in socket.adapter.rooms){	
+		if(socket.adapter.rooms[room].type == roomType.game){
+			var game = {
+				players: socket.adapter.rooms.sockets,
+				name: socket.adapter.rooms[room].name,
+				status: socket.adapter.rooms[room].roomStatus
+			}
+			gamelist.push(game);
+		}
+	}
+};
 
 addUser = function(id, username, avatar){
 	var newUsr = newUser(id, username, avatar);

@@ -9,7 +9,19 @@ Vue.component('message-item', {
 });
 Vue.component('server-row', {
 	props: ['game'],
-	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.status}}</td></tr>',
+	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.status}}</td><td><button :id="buttonId">Join</button></td></tr>',
+	computed: {
+		buttonId: function(){
+			return "joinButton_" + this.game.name;
+		}
+	},
+	mounted: function () {
+		console.log("element mounted:" + this);
+		var that = this;
+		$('#joinButton_'+this.game.name).click(function () {
+			vm.joinGame(that.game.name);
+		});
+	}
 });
 
 Vue.component('rooms-list-item', {
@@ -37,11 +49,11 @@ Vue.component('rooms-list-item', {
 				$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
 			}
 		}else{
-			buildServerTable();
+			/* buildServerTable();
 			$('#'+this.room.name+'_messages').append($('<table class="serverTable"><th>Players</th>' +
 				'<th>Name</th><th>Status</th>'+
 				'<server-row v-for="game in allGames" v-bind:game="game"'+	  
-				'v-bind:key="game.name"></server-row></table>'));
+				'v-bind:key="game.name"></server-row></table>')); */
 		}
 	},
 	mounted: function () {
@@ -64,13 +76,13 @@ Vue.component('rooms-list-item', {
 Vue.component('message-area', {
 	props: ['room'],
 	template: 	'<div class="messageAreaContainer">'+
-					'<div v-if="hasCanvas" class="gameMessageAreaContainer">' +
+					'<div v-if="hasCanvas && !isServer" class="gameMessageAreaContainer">' +
 						'<canvas :id="cursorCanvasID" class="cursor_class"></canvas>'+
 						'<canvas :id="roomId" :class="roomClass"></canvas>'+
 						'<div :id="gameDivId" :class="roomClass"></div>'+
 						'<ul :id="gameMessages" :class="gameClass"></ul>'+
 					'</div>'+
-					'<div v-else="hasCanvas">' +
+					'<div v-else="!hasCanvas && !isServer">' +
 						'<ul :id="roomId" :class="roomClass"></ul>'+
 					'</div>'+
 				'</div>',
@@ -101,6 +113,9 @@ Vue.component('message-area', {
 		},
 		hasCanvas : function(){
 			return (this.room.type==roomType.game);
+		},
+		isServer : function(){
+			return (this.room.type==roomType.server);
 		}
 	},
 	mounted: function () {
@@ -144,6 +159,20 @@ const gameStatus = {
 		};		
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
+const helpMessage = '<li class="serverHelpMessage">'+ 
+		'<div>' +
+		'<span>Help commands:</span><br/>' +
+		'<span> /help : Displays this list</span><br/>' +
+		'<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>' +
+		'<span> /joingame : Join a game room by entering a room name after the command.</span><br/>' +
+		'<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>' +
+		'<span> /leave : Leave any room by entering the room name.</span><br/>' +
+		'<span> /dm : Start a direct message room by entering the username.</span><br/>' +
+		'<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>' +
+		'<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>' +
+		'</div>' +
+	'</li>';
+		
 const emojiList = [
 	"1f600","1f603","1f604","1f601","1f606","1f605","1f923","1f602","1f642","1f643","1f609","1f60a","1f607","1f970","1f60d",
 	"1f929","1f618","1f617","263a","1f61a","1f619","1f60b","1f61b","1f61c","1f92a","1f61d","1f911","1f917","1f92d","1f92b",
@@ -351,7 +380,7 @@ var vm = new Vue({
 		roomList : {},
 		joinedRooms : [],
 		usersInRoom: [],
-		serverGames: [],
+		allGames: [],
 		cursors: {},
 		currentRoom : defaultRoom, //referenced by .name which is unique
 		currentRoomType : roomType.chat,
@@ -375,20 +404,6 @@ var vm = new Vue({
 				}
 			}
 			return vm.usersInRoom; //no room change, old list
-		},
-		allGames : function(){
-			var allGames = [];
-			for(var room in this.roomList){	
-				if(this.roomList[room].type == roomType.game){
-					var theseGamers = this.getUsersInRoom(this.roomList[room]);
-					var game = {
-						players: theseGamers,
-						name: this.roomList[room].name,
-						status: this.roomList[room].status
-					}
-					allGames.push(game);
-				}
-			}
 		},
 		purgeOldCursors : function(){
 			var cursor = {};
@@ -452,6 +467,9 @@ var vm = new Vue({
 			$('#main').show();
 			connect(this.nickname);
 		},
+		joinGame : function (room){
+			socket.emit('join_room', room, vm.currentRoom, roomType.game);
+		},
 		nicknameEnter : function(event){
 			if ( event.which == 13) {
 				this.start();
@@ -484,21 +502,7 @@ var vm = new Vue({
 		}
 	},
 	components: { //don't need these if they are globally registered
-		'help-message' : {
-			template: '<li class="serverHelpMessage">'+ 
-							'<div>' +
-							'<span>Help commands:</span><br/>' +
-							'<span> /help : Displays this list</span><br/>' +
-							'<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>' +
-							'<span> /joingame : Join a game room by entering a room name after the command.</span><br/>' +
-							'<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>' +
-							'<span> /leave : Leave any room by entering the room name.</span><br/>' +
-							'<span> /dm : Start a direct message room by entering the username.</span><br/>' +
-							'<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>' +
-							'<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>' +
-							'</div>' +
-						'</li>'
-		}
+
 	}, 
 	computed: {
 
@@ -518,16 +522,18 @@ connect = function(name){
 		vm.currentRoom = room.name;
 		vm.currentRoomType = roomType[room.type];
 		vm.toggleActiveRooms(oldRoom);
+		vm.allGames = updateGames();
 		focusCursor('msgForm',1);
 	});
 
 	socket.on('chat_message', function(msg){
-		
 		if(msg.room == null){
 			msg.room = defaultRoom;
 			vm.currentRoomType = roomType.chat;
 		}
-		
+		if(msg.room == serverRoom){
+			return;
+		}
 		if(msg.room == socket.id){ //private_message, needs the id to be the room
 			if(!roomExists(msg.id)){
 				var oldRoom = vm.currentRoom;
@@ -596,6 +602,7 @@ connect = function(name){
 		vm.currentRoom = defaultRoom;
 		vm.toggleActiveRooms(room);
 		removeRoom(room);
+		vm.allGames = updateGames();
 		$('#' +vm.currentRoom+ '_messages').show();
 		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));  /***MESSAGE***/
 		alignMessageToBottom();
@@ -633,6 +640,7 @@ connect = function(name){
 		vm.userList = usrList;
 		vm.roomList = rooms;
 		vm.usersInRoom = vm.getUsersInRoom(vm.currentRoom);
+		vm.allGames = updateGames();
 		vm.cursors = vm.purgeOldCursors();
 	});
 	
@@ -643,25 +651,26 @@ connect = function(name){
 	socket.on('drawing', onDrawingEvent);
 	socket.on('track_cursor', ontrackCursor);
 	socket.on('clear_canvas', clearCanvas);
-
+	
+	join = function(inputAr, type){
+		if(inputAr.length < 2){
+			invalidCommand();
+			return;
+		}
+		if(inputAr.length == 2){
+			socket.emit('join_room', inputAr[1],vm.currentRoom, type);
+		}else{
+			var pword = '';
+			for(var i = 2; i < inputAr.length; i++){
+				pword+=inputAr[i];
+			}
+			socket.emit('join_room', inputAr[1],vm.currentRoom, type, pword);
+		}
+		clearAndScroll();
+	}
+	
 	checkCommand = function (inputval){
 		var inputvalArgs = inputval.split(' ');
-		join = function(inputAr, type){
-			if(inputAr.length < 2){
-				invalidCommand();
-				return;
-			}
-			if(inputAr.length == 2){
-				socket.emit('join_room', inputAr[1],vm.currentRoom, type);
-			}else{
-				var pword = '';
-				for(var i = 2; i < inputAr.length; i++){
-					pword+=inputAr[i];
-				}
-				socket.emit('join_room', inputAr[1],vm.currentRoom, type, pword);
-			}
-			clearAndScroll();
-		}
 
 		if(inputvalArgs[0]=="joinchat"){
 			join(inputvalArgs, roomType.chat);
@@ -730,7 +739,7 @@ connect = function(name){
 			console.log(socket);
 
 		}else if(inputvalArgs[0]=="help"){
-			$('#'+vm.currentRoom+'_messages').append('<help-message></help-message>');  /***MESSAGE***/
+			$('#'+vm.currentRoom+'_messages').append(helpMessage);  /***MESSAGE***/
 			
 		}else if(inputvalArgs[0]=="secret"){
 			if(inputvalArgs.length < 2){
@@ -998,6 +1007,21 @@ newRoom = function(id,name,type){
 	return room;
 }
 
+updateGames = function(){
+	var allGames = [];
+	for(var room in vm.roomList){	
+		if(vm.roomList[room].type == roomType.game){
+			var theseGamers = vm.getUsersInRoom(vm.roomList[room].name);
+			var game = {
+				players: theseGamers,
+				name: vm.roomList[room].name,
+				status: vm.roomList[room].roomStatus
+			}
+			allGames.push(game);
+		}
+	}	
+	return allGames;	
+}
 focusCursor = function(id, cursorIndex){
 	$('#'+id).focus;
 	$('#'+id).prop("selectionStart",cursorIndex);

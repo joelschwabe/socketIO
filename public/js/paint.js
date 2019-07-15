@@ -310,7 +310,7 @@ function drawCursor(){
 	for(var c in vm.cursors){
 		var x = vm.cursors[c].msg.x * w;
 		var y = vm.cursors[c].msg.y * h;
-		x += 10; //idk why
+		//x += 10; //idk why
 		var col = vm.cursors[c].msg.color;
  		cursorContext.beginPath(); //draw crosshair
 		cursorContext.moveTo(x , y);

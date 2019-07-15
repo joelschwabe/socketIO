@@ -151,9 +151,10 @@ form button {
     margin-bottom: 2px;
     margin-left: -5px;
 }
-.serverTable{
+.serverTable table,tr,th,td{
 	font-size: medium;
 	color:white;
+	border: 4px solid yellow;
     font-stretch: ultra-expanded;
     text-shadow: -1px -1px 3px #000000;
 }
@@ -258,5 +259,5 @@ form button {
 	cursor: url('../images/star.png') 0 56, none;
 }
 .polygon{
-	cursor: url('../images/polygon.png') 0 56, none;
+	cursor: url('../images/polygon.png') 27 27, none;
 }
