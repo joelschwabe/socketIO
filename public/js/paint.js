@@ -60,7 +60,22 @@ updateModifiers = function(){
 	penCursor.edgeWidth = $('#edgeWidthBar')[0].value;
 	penCursor.startPoint = $('#startPointBar')[0].value;
 	penCursor.indent = $('#indentBar')[0].value / 100;
-	penCursor.mod = $('#randomBar')[0].value;
+	var mod = parseInt($('#randomBar')[0].value);
+	var modx = Math.floor(Math.random()*(mod+1); // this will get a number between 1 and mod;
+	penCursor.mod = modx * Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+}
+
+randomColorShift = function(){
+	var color = '#';
+	for(var i =1; i < 6; i+=2){
+		tempCol = '';
+		var col = Math.abs(255 - (parseInt(penCursor.color.substr(i,2), 16) + penCursor.mod));
+		if(col < 16){
+			tempCol = '0';
+		}
+		color += tempCol + col.toString(16);
+	} 
+	return color;
 }
 
 colorCloneHandle = function(event) {
