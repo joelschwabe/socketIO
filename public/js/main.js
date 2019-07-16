@@ -9,7 +9,7 @@ Vue.component('message-item', {
 });
 Vue.component('server-row', {
 	props: ['game'],
-	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.status}}</td><td><button :id="buttonId">Join</button></td></tr>',
+	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.status}}</td><td><button :id="buttonId" class="tableButton">Join</button></td></tr>',
 	computed: {
 		buttonId: function(){
 			return "joinButton_" + this.game.name;
@@ -143,16 +143,24 @@ Vue.component('users-list-item', {
 const defaultRoom = 'General';
 const serverRoom = 'Servers';
 const roomType = {
-			game: 'game',
-			chat: 'chat',
-			dm: 'dm',
-			server: 'server'
+		game: 'game',
+		chat: 'chat',
+		dm: 'dm',
+		server: 'server'
 		};
 const gameStatus = {
-			created: 'created',
-			waiting: 'waiting',
-			playing: 'playing',
-			finished: 'finished'
+		created: 'created',
+		waiting: 'waiting',
+		playing: 'playing',
+		finished: 'finished'
+		};		
+const drawType = {
+		brush: 'brush',
+		pencil: 'pencil',
+		eyedrop: 'eyedrop',
+		star: 'star',
+		line: 'line',
+		polygon:'polygon'
 		};		
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
@@ -382,7 +390,29 @@ var vm = new Vue({
 		currentRoom : defaultRoom, //referenced by .name which is unique
 		currentRoomType : roomType.chat,
 		formMessage : '',
-		msgCursorIndex: 0
+		msgCursorIndex: 0,
+		penCursor : {
+			type : drawType.pencil,
+			color: '#ff0000',
+			colorMod: false,
+			colorTrim : '#ffffff',
+			colorTrimMod: false,
+			width: 50,
+			widthMod: false,
+			edgeWidth: 1,
+			edgeWidthMod: false,
+			points: 5,
+			pointsMod: false,
+			startPoint: 0,
+			startPointMod: false,
+			indent: 0.3,
+			indentMod: false,
+			mod: 0,
+			x:0,
+			y:0,
+			xh:0,
+			yh:0
+		}
 	},
 	methods: {
 		getUsersInRoom :  function(roomName){
@@ -646,7 +676,7 @@ connect = function(name){
 	});
 	
 	socket.on('drawing', onDrawingEvent);
-	socket.on('track_cursor', ontrackCursor);
+	socket.on('track_cursor', onTrackCursor);
 	socket.on('clear_canvas', clearCanvas);
 	
 	join = function(inputAr, type){
@@ -956,7 +986,7 @@ pickPaintTool = function(type){
 	for(var t in drawType){
 		if(drawType[t] == type){
 			//add class
-			penCursor.type = type;
+			vm.penCursor.type = type;
 			$('#' +vm.currentRoom+ '_canvas').addClass(type);
 		}else{
 			//remove

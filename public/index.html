@@ -5,8 +5,6 @@
     <title>Socket.io w/ Vue.js chat</title>
 	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
 	<link rel="icon" href="/favicon.ico" type="image/x-icon">
-
-	<!-- <link rel="stylesheet" href="/css/emojionearea.css" type="text/css"> -->
 	<link rel="stylesheet" href="/css/main.css" type="text/css">
 	   <!-- development version, includes helpful console warnings -->
 	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
@@ -28,7 +26,7 @@
 				<th>Players</th>
 				<th>Name</th>
 				<th>Status</th>
-				<th><button onclick="createGame()">Create</button></th>
+				<th><button class="tableButton" onclick="createGame()">Create Game</button></th>
 			</tr>
 			<tr is="server-row" 
 				v-for="game in allGames" 
@@ -68,35 +66,42 @@
 			<div id="canvasControls">
 				<div id="colorPicker">
 					<p>Fill Color</p>
-					<input type="color" id="colorPickerBar" onchange="updateColor()" value="#ff0000" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="colorPickerMod"> Mod
+					<input type="color" id="colorPickerBar"  value="#ff0000" v-model="penCursor.color" style="width:70%;">
+					<input type="checkbox"  id="colorPickerMod" v-model="penCursor.colorMod"> Mod
 				</div>
 				<div id="colorPickerTrim">
 					<p>Edge Color</p>
-					<input type="color" id="colorPickerTrimBar" onchange="updateColor()" value="#ffffff" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="colorPickerTrimMod"> Mod
+					<input type="color" id="colorPickerTrimBar" value="#ffffff" v-model="penCursor.colorTrim" style="width:70%;">
+					<input type="checkbox"  id="colorPickerTrimMod" v-model="penCursor.colorTrimMod" > Mod
 				</div>
 				<div id="widthPicker">
 					<p>Width:</p>
-					<input type="range" min="1" max="250" id="widthBar" value="50" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="widthMod"> Mod
+					<input type="range" min="1" max="250" id="widthBar" value="50"  v-model="penCursor.width" style="width:70%;">
+					<input type="checkbox" id="widthMod" v-model="penCursor.widthMod" > Mod
 				</div>
 				<div id="edgeWidthPicker">
 					<p>Edge Width:</p>
-					<input type="range" min="1" max="20" id="edgeWidthBar" value="3" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="edgeWidthMod"> Mod
+					<input type="range" min="1" max="20" id="edgeWidthBar" value="3"  v-model="penCursor.edgeWidth" style="width:70%;">
+					<input type="checkbox"  id="edgeWidthMod" v-model="penCursor.edgeWidthMod" > Mod
 				</div>
 				<div id="startPointPicker">
 					<p>Starting Degree:</p>
-					<input type="number" min="0" max="360" id="startPointBar" value="0" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="startPointMod"> Mod
+					<input type="number" min="0" max="360" id="startPointBar" value="0"  v-model="penCursor.startPoint" style="width:70%;">
+					<input type="checkbox"  id="startPointMod" v-model="penCursor.startPointMod"> Mod
 				</div>				
 				<div id="pointPicker">
 					<p>Points:</p>
-					<input type="range" min="1" max="20" id="pointBar" value="5" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="pointMod"> Mod
+					<input type="range" min="1" max="20" id="pointBar" value="5"  v-model="penCursor.points" style="width:70%;">
+					<input type="checkbox" id="pointMod" v-model="penCursor.pointsMod"> Mod
 				</div>
 				<div id="indentPicker">
 					<p>Indent Amount:</p>
-					<input type="range" min="1" max="100" id="indentBar" value="40" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="indentMod"> Mod
+					<input type="range" min="1" max="100" id="indentBar" value="40" v-model="penCursor.indent" style="width:70%;">
+					<input type="checkbox" id="indentMod" v-model="penCursor.indentMod"> Mod
 				</div>
 				<div id="randomPicker">
 					<p>Random Mod%:</p>
-					<input type="range" min="0" max="100" id="randomBar" value="0" onchange="updateModifiers()" style="width:75%;">
+					<input type="range" min="0" max="100" id="randomBar" value="0" v-model="penCursor.mod" style="width:100%;">
 				</div>
 				<button id="eyedropTool" onclick="pickPaintTool('eyedrop')">Clone Color</button>
 				<button id="starTool" onclick="pickPaintTool('star')">Star</button>
@@ -123,9 +128,7 @@
    </div>
 	<script src="/socket.io/socket.io.js"></script>
 	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
-	<!-- <script src="/js/emojione.js" type="application/javascript"></script> -->
-	<!-- <script src="/js/emojionearea.js" type="application/javascript"></script> -->
+	<script src="/js/paint.js" type="application/javascript"></script>
 	<script src="/js/main.js" type="application/javascript"></script>
-  <script src="/js/paint.js" type="application/javascript"></script>
   </body>
 </html>

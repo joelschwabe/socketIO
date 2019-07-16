@@ -43,6 +43,7 @@ app.get('/', function(req, res) {
 var userList = [];
 var gamelist = [];
 var roomSecret = {}; //{roomName:'secret'}
+var roomPassword = {}; //{roomName:'password'}
 
 io.on('connection', function(socket){
 
@@ -247,8 +248,8 @@ io.on('connection', function(socket){
 			if(!userInRoom){
 				var thisRoom = socket.adapter.rooms[room];
 				if(thisRoom.length < maxUsersPerRoom){
-					if(thisRoom.hasOwnProperty('pword')){ //it's private
-						if(pword == thisRoom.pword){
+					if((roomPassword.hasOwnProperty(room))){ //it's private
+						if(pword == roomPassword[room]){
 							console.log("private " +type+ " room joined");
 							socket.join(room);
 							var message = getName(socket) + " joined " + room;
@@ -293,7 +294,8 @@ io.on('connection', function(socket){
 				}else{
 					console.log("created private " +type+ " room:" + pword);
 					socket.join(room);
-					socket.adapter.rooms[room].pword = pword;
+					//socket.adapter.rooms[room].pword = pword;
+					roomPassword[room] = pword;
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
 					socket.adapter.rooms[room].roomStatus = gameStatus.created;
