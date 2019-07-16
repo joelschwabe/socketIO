@@ -124,7 +124,9 @@ form button {
 #messages li:nth-child(even) {
 	background: #47206529;
 }
-#name {}
+#canvasControls{
+	padding-top: 10px;
+}
 #rooms {
     top: 0px;
 }
@@ -251,11 +253,6 @@ form button {
 }
 .inactiveMessages {
 	display: none;
-}
-#colorPicker{
-	margin-top: 15px;
-    font-size: medium;
-    font-weight: 700;
 }
 .eyedrop{
 	cursor: url('../images/eyedropper.png') 0 56, none;

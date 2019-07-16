@@ -68,35 +68,35 @@
 			<div id="canvasControls">
 				<div id="colorPicker">
 					<p>Fill Color</p>
-					<input type="color" id="colorPickerBar" onchange="updateColor()" value="#ff0000" style="width:100%;">
+					<input type="color" id="colorPickerBar" onchange="updateColor()" value="#ff0000" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="colorPickerMod"> Mod
 				</div>
 				<div id="colorPickerTrim">
 					<p>Edge Color</p>
-					<input type="color" id="colorPickerTrimBar" onchange="updateColor()" value="#ffffff" style="width:100%;">
+					<input type="color" id="colorPickerTrimBar" onchange="updateColor()" value="#ffffff" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="colorPickerTrimMod"> Mod
 				</div>
 				<div id="widthPicker">
 					<p>Width:</p>
-					<input type="range" min="1" max="250" id="widthBar" value="50" onchange="updateModifiers()" style="width:100%;">
+					<input type="range" min="1" max="250" id="widthBar" value="50" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="widthMod"> Mod
 				</div>
 				<div id="edgeWidthPicker">
 					<p>Edge Width:</p>
-					<input type="range" min="1" max="20" id="edgeWidthBar" value="3" onchange="updateModifiers()" style="width:100%;">
+					<input type="range" min="1" max="20" id="edgeWidthBar" value="3" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="edgeWidthMod"> Mod
 				</div>
 				<div id="startPointPicker">
 					<p>Starting Degree:</p>
-					<input type="number" min="0" max="360" id="startPointBar" value="0" onchange="updateModifiers()" style="width:100%;">
+					<input type="number" min="0" max="360" id="startPointBar" value="0" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="startPointMod"> Mod
 				</div>				
 				<div id="pointPicker">
 					<p>Points:</p>
-					<input type="range" min="1" max="20" id="pointBar" value="5" onchange="updateModifiers()" style="width:100%;">
+					<input type="range" min="1" max="20" id="pointBar" value="5" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="pointMod"> Mod
 				</div>
 				<div id="indentPicker">
 					<p>Indent Amount:</p>
-					<input type="range" min="1" max="100" id="indentBar" value="40" onchange="updateModifiers()" style="width:100%;">
+					<input type="range" min="1" max="100" id="indentBar" value="40" onchange="updateModifiers()" style="width:75%;"><input type="checkbox" onchange="updateModifiers()" id="indentMod"> Mod
 				</div>
 				<div id="randomPicker">
-					<p>Random Influence:</p>
-					<input type="range" min="0" max="100" id="randomBar" value="0" onchange="updateModifiers()" style="width:100%;">
+					<p>Random Mod%:</p>
+					<input type="range" min="0" max="100" id="randomBar" value="0" onchange="updateModifiers()" style="width:75%;">
 				</div>
 				<button id="eyedropTool" onclick="pickPaintTool('eyedrop')">Clone Color</button>
 				<button id="starTool" onclick="pickPaintTool('star')">Star</button>

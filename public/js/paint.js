@@ -11,12 +11,19 @@ var drawType = {
 var penCursor = {
 	type : drawType.pencil,
 	color: '#ff0000',
+	colorMod: false,
 	colorTrim : '#ffffff',
+	colorTrimMod: false,
 	width: 50,
+	widthMod: false,
 	edgeWidth: 1,
+	edgeWidthMod: false,
 	points: 5,
+	pointsMod: false,
 	startPoint: 0,
-	indent: 0.4,
+	startPointMod: false,
+	indent: 0.3,
+	indentMod: false,
 	mod: 0,
 	x:0,
 	y:0,
@@ -60,22 +67,55 @@ updateModifiers = function(){
 	penCursor.edgeWidth = $('#edgeWidthBar')[0].value;
 	penCursor.startPoint = $('#startPointBar')[0].value;
 	penCursor.indent = $('#indentBar')[0].value / 100;
-	var mod = parseInt($('#randomBar')[0].value);
-	var modx = Math.floor(Math.random()*(mod+1); // this will get a number between 1 and mod;
-	penCursor.mod = modx * Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+	penCursor.colorMod = $('#colorPickerMod').prop('checked');
+	penCursor.colorTrimMod = $('#colorPickerTrimMod').prop('checked');
+	penCursor.widthMod = $('#widthMod').prop('checked');
+	penCursor.pointsMod = $('#pointMod').prop('checked');
+	penCursor.edgeWidthMod = $('#edgeWidthMod').prop('checked');
+	penCursor.startPointMod = $('#startPointMod').prop('checked');
+	penCursor.indentMod = $('#indentMod').prop('checked');
+	penCursor.mod = parseInt($('#randomBar')[0].value);
 }
 
-randomColorShift = function(){
-	var color = '#';
-	for(var i =1; i < 6; i+=2){
-		tempCol = '';
-		var col = Math.abs(255 - (parseInt(penCursor.color.substr(i,2), 16) + penCursor.mod));
-		if(col < 16){
-			tempCol = '0';
+getRandomMod = function(balance){
+	var modx = Math.floor(Math.random()*(penCursor.mod/balance)); // this will get a number between 1 and penCursor.mod;
+	var mody= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+	var mod = modx * mody;
+	return mod;
+}
+
+randomNumberShift = function(type, isOn, balance){
+	if(isOn){
+		var mod = getRandomMod(balance);
+		penCursor[type] = mod;
+		return penCursor[type];
+	}else{
+		return penCursor[type];
+	}
+}
+
+randomColorShift = function(type, isOn){
+	if(isOn){
+		var color = '#';
+		for(var i =1; i < 6; i+=2){
+			var mod = getRandomMod(1);
+			tempCol = '';
+			var col = Math.abs(255 - (parseInt(penCursor[type].substr(i,2), 16) + mod));
+			if(col < 16){
+				tempCol = '0';
+			}
+			color += tempCol + col.toString(16);
 		}
-		color += tempCol + col.toString(16);
-	} 
-	return color;
+		penCursor[type] = color; 
+		return color;
+	}else{
+		if(type=="colorTrim"){
+			return penCursor.colorTrim;
+			}
+		if(type=="color"){
+			return penCursor.color;
+		}
+	}
 }
 
 colorCloneHandle = function(event) {
@@ -282,13 +322,15 @@ function onMouseUp(e){
 
 function doDraw(e){
 	if(penCursor.type == drawType.brush){
-		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.width,true);
+		drawBrush(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY,  randomColorShift('color',penCursor.colorMod), randomNumberShift('width',penCursor.widthMod,1),true);
 	}else if(penCursor.type == drawType.pencil){
-		drawPencil(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.width,true);
+		drawPencil(penCursor.x, penCursor.y, e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY,  randomColorShift('color',penCursor.colorMod),  randomNumberShift('width',penCursor.widthMod,1),true);
 	}else if(penCursor.type == drawType.star){
-		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.indent, penCursor.startPoint, true); 
+		drawStar(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY,  randomColorShift('color',penCursor.colorMod),  randomColorShift('colorTrim',penCursor.colorTrimMod), 
+			randomNumberShift('width',penCursor.widthMod,1), randomNumberShift('edgeWidth',penCursor.edgeWidthMod,1), randomNumberShift('points',penCursor.pointsMod,5), randomNumberShift('indent',penCursor.indentMod,5), randomNumberShift('startPoint',penCursor.startPointMod,1), true); 
 	}else if(penCursor.type == drawType.polygon){
-		drawPolygon(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, penCursor.color, penCursor.colorTrim, penCursor.width, penCursor.edgeWidth, penCursor.points, penCursor.startPoint, true); 
+		drawPolygon(e.clientX||e.touches[0].clientX, e.clientY||e.touches[0].clientY, randomColorShift('color',penCursor.colorMod), randomColorShift('colorTrim',penCursor.colorTrimMod), 
+		randomNumberShift('width',penCursor.widthMod,1), randomNumberShift('edgeWidth',penCursor.edgeWidthMod,1), randomNumberShift('points',penCursor.pointsMod,5), randomNumberShift('startPoint',penCursor.startPointMod,1), true); 
 	}else if(penCursor.type == drawType.eyedrop){
 		colorCloneHandle(e);
 	}
