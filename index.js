@@ -113,21 +113,20 @@ io.on('connection', function(socket){
 			message = "Starting Game...";
 			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
 			io.to(msg.room).emit('start_game', msg); //start game just needs to be emitted to the room to be valid
+			socket.adapter.rooms[msg.room].roomStatus = gameStatus.playing;
+			io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
 		}else{
 			message = "Unable to start game. Game not in ready state!";
 			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
 		}
 	});
 	socket.on('clear_canvas', function(msg){
-		//console.log(msg);
 		io.to(msg.room).emit('clear_canvas', msg);
 	});
 	socket.on('track_cursor', function(msg){
-		//console.log(msg);
 		io.to(msg.room).emit('track_cursor', msg);
 	});
 	socket.on('register_secret', function(msg){
-		//console.log(msg);
 		var message = "Secret submitted";
 		var doneSecret = false;
 
@@ -143,15 +142,10 @@ io.on('connection', function(socket){
 		if(!doneSecret){
 			roomSecret[msg.room] = msg.msg;
 		}
-		console.log("roomSecret:");
-		console.log(roomSecret);
 		io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,msg.room,message))
 	});
 	socket.on('guess_secret', function(msg){
-		//console.log(msg);
 		var message = 'No secret!';
-		console.log("roomSecret:");
-		console.log(roomSecret);
 
 		if(roomSecret.hasOwnProperty(msg.room)){
 			if(roomSecret[msg.room] == msg.msg){
@@ -164,6 +158,7 @@ io.on('connection', function(socket){
 		
 		io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message))
 	});
+
 	socket.on('debug server', function(){
 		console.log(io);
 		console.log(socket);
@@ -180,12 +175,15 @@ io.on('connection', function(socket){
 			var oldName = socket.username;
 			if(oldName == msg.username){
 				socket.avatar = avatar;
-				addUser(socket.id, socket.username, socket.avatar);
+				msg = addUser(msg, socket.avatar);
 			}else{
-				msg = checkForDupName(msg);
+				msg.id = socket.id;
 				socket.username = msg.username;
+				socket.userId = msg.userId;
 				socket.avatar = avatar;
-				addUser(socket.id, socket.username, socket.avatar);
+			
+				msg = addUser(msg, avatar);
+
 				var message;
 				if(oldName == null || (typeof oldName == 'undefined')){
 					message = getName(socket) + " is now chatting!";
@@ -195,7 +193,7 @@ io.on('connection', function(socket){
 				}
 				io.to(defaultRoom).emit('chat_message', newMsg(serverName, serverName,null,message));
 			}
-
+			io.to(socket.id).emit('force_name_update', msg.username);
 			io.emit('users_rooms_list', userList, socket.adapter.rooms);
 		}else{
 			var message = "Nicknames must 40 characters or less.";
@@ -204,10 +202,11 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('chat_message', function(msg){
-		console.log('userid: ' + msg.id);
-		console.log(' -username: ' + msg.username);
-		console.log('  -room: ' + msg.room);
-		console.log('   -message: ' + msg.msg);
+		console.log('socketId: ' + msg.id);
+		console.log(' -userId: ' + msg.userId);
+		console.log('   -username: ' + msg.username);
+		console.log('    -room: ' + msg.room);
+		console.log('     -message: ' + msg.msg);
 		if(msg.room != serverRoom){
 			io.to(msg.room).emit('chat_message', msg);
 		}
@@ -294,7 +293,6 @@ io.on('connection', function(socket){
 				}else{
 					console.log("created private " +type+ " room:" + pword);
 					socket.join(room);
-					//socket.adapter.rooms[room].pword = pword;
 					roomPassword[room] = pword;
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
@@ -334,33 +332,37 @@ io.on('connection', function(socket){
 	
 	checkForDupName = function (msg){
 		for(var i=0; i < userList.length; i++){
-			if(userList[i].username == msg.username){
-				var index = 1;
-				if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
-					var isNumber = true;
-					while(isNumber){
-						if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
-							//is a letter
-							isNumber = false;
-							var numberName = msg.username.substr(msg.username.length - index, msg.username.length);
-							var stringName =  msg.username.substr(0, msg.username.length - index);
-							msg.username = stringName + (parseInt(numberName) + 1);
-							//console.log(index);
-						}else{
-							//is a number
-							index++;
-							//console.log(index);
-						}
-					}
-				}else{
-					msg.username = msg.username + "1";
+			if(userList[i].username == msg.username){ //matching username
+				if(userList[i].id == msg.id){
+					return false; //existing user reconnecting
 				}
-				io.to(socket.id).emit('force_name_update', msg.username);
+				return true;
 			}
 		}
-		return msg;
+		return false;
 	}
 
+	fixDupName = function (msg){
+		var index = 1;
+		if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
+			var isNumber = true;
+			while(isNumber){
+				if(!isNaN(parseInt(msg.username.charAt(msg.username.length-index)))){
+					//is a letter
+					isNumber = false;
+					var numberName = msg.username.substr(msg.username.length - index, msg.username.length);
+					var stringName =  msg.username.substr(0, msg.username.length - index);
+					msg.username = stringName + (parseInt(numberName) + 1);
+				}else{
+					index++;
+				}
+			}
+		}else{
+			msg.username = msg.username + "2";
+		}
+		io.to(socket.id).emit('force_name_update', msg.username);
+		return msg;
+	}
 });
 
 updateGameList = function(socket){
@@ -377,23 +379,43 @@ updateGameList = function(socket){
 	}
 };
 
-addUser = function(id, username, avatar){
-	var newUsr = newUser(id, username, avatar);
+addUser = function(msg, avatar){
+	var newUsr = newUser(msg.id, msg.userId, msg.username, avatar);
 	console.log(newUsr);
-	var exists = false;
+	var existsId = false;
+	var existsUuid = false;
+	var dupName = checkForDupName(msg);
+	var matchIndex = -1;
 	for(var i = 0; i < userList.length; i++){
-		console.log("user:"+userList[i].id + " "  + userList[i].username);
 		if(userList[i].id == newUsr.id){
 			console.log("user exists, changing name...");
-			userList[i] = newUser(userList[i].id, newUsr.username, newUsr.avatar);
-			exists = true;
-			console.log("user:"+userList[i].id + " "  + userList[i].username);
+			matchIndex = i;
+			existsId = true;
+		}
+		if(userList[i].userId == newUsr.userId){
+			console.log("user matches existing uuid, overwriting old user...");
+			matchIndex = i;
+			existsUuid = true;
 		}
 	}
-	if(!exists){
-		userList.push(newUsr);
+	if(dupName){
+		if((!existsUuid && !exists)){
+			newUsr = fixDupName(newUsr); //add to name  +1
+			userList.push(newUsr);
+		}else{
+			userList[matchIndex] = newUsr;
+		}
+	}else{
+		userList[matchIndex] = newUsr;
 	}
+
+	if(!existsId && !existsUuid && !dupName){
+		userList.push(newUsr);
+		console.log("adding new user");
+	}
+	console.log("user:"+userList[userList.length-1].id + " " + userList[userList.length-1].userId + " " + userList[userList.length-1].username);
 	console.log(userList.length + " users exist");
+	return newUsr;
 }
 
 removeUser = function(id){
@@ -424,9 +446,10 @@ newMsg = function(id,username,room,message){
 	return msg
 }
 
-newUser = function(id, name, avatar){
+newUser = function(id, userId,name, avatar){
 	var usr = new Object();
 	usr.id = id;
+	usr.userId = userId;
 	usr.username = name;
 	usr.avatar = avatar;
 	return usr;

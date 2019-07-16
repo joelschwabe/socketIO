@@ -177,6 +177,8 @@ form button {
 }
 .serverHelpMessage{
 	color: yellow;
+	font-size: medium;
+    font-stretch: ultra-expanded;
 }
 .game_class{
 	overflow-y: hidden;
@@ -230,6 +232,18 @@ form button {
 .messageDisplayText{
 	margin-left: 5px;
     margin-bottom: -6px;
+}
+.internalMessage{
+	color: #12ceef;
+	font-weight:bold;
+	font-size: medium;
+    font-stretch: ultra-expanded;
+}
+.internalMessageError{
+	color:red;
+	font-weight:bolder;
+	font-size: medium;
+    font-stretch: ultra-expanded;
 }
 .userListItem{
 	margin-top:10px;

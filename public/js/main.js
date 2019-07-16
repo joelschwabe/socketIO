@@ -42,16 +42,14 @@ Vue.component('rooms-list-item', {
 		}
 	},
 	created: function () {
-		console.log("element created:" + this);
 		if(this.room.name != serverRoom){
-			$('#'+this.room.name+'_messages').append($('<li>').text('Joined Room:'+this.room.name).css('color','blue')); /***MESSAGE***/
+			$('#'+this.room.name+'_messages').append($('<li class="internalMessage">').text('Joined Room:'+this.room.name)); /***MESSAGE***/
 			if(this.room.name == defaultRoom){
-				$('#'+this.room.name+'_messages').append($('<li>').text('Welcome to the General Chat. Type "/help" for a list of commands.').css('color','blue')); /***MESSAGE***/
+				$('#'+this.room.name+'_messages').append($('<li class="internalMessage">').text('Welcome to the General Chat. Type "/help" for a list of commands.')); /***MESSAGE***/
 			}
 		}
 	},
 	mounted: function () {
-		console.log("element mounted:" + this);
 		var that = this;
 		if(this.room.id){
 			$('#'+this.room.id + '_room').click(function () {
@@ -381,6 +379,7 @@ var vm = new Vue({
 	el: '#app',
 	data: {
 		nickname : '',
+		userId : '',
 		userList : [],
 		roomList : {},
 		joinedRooms : [],
@@ -492,7 +491,7 @@ var vm = new Vue({
 		start : function(){
 			$('#nameform').hide();
 			$('#main').show();
-			connect(this.nickname);
+			connect();
 		},
 		joinGame : function (room){
 			socket.emit('join_room', room, vm.currentRoom, roomType.game);
@@ -509,7 +508,7 @@ var vm = new Vue({
 				checkCommand(inputval.substring(1, inputval.length)); //trim off '/'
 				return false;
 			}
-			socket.emit('chat_message', newMsg(socket.id, socket.username, vm.currentRoom, inputval));
+			socket.emit('chat_message', newMsg(socket.id, socket.username, vm.currentRoom, inputval, vm.userId));
 			if(vm.currentRoomType == roomType.dm){ //dm's are only sent to the user dm'd, so we need to keep track of the messages we sent
 				appendText(newMsg(vm.currentRoom, socket.username, vm.currentRoom,inputval));  /***MESSAGE***/
 			}
@@ -537,10 +536,28 @@ var vm = new Vue({
 })
 
 var socket;
-connect = function(name){
-	socket = io();
-	socket.emit('join_room', serverRoom, serverRoom, roomType.server);
-	socket.emit('join_room', defaultRoom,defaultRoom, roomType.chat);
+connect = function(){
+	if (socket) {
+		socket.destroy();
+		delete socket;
+		socket = null;
+	}
+
+	socket = io.connect( 'ws://localhost:3000', {
+		reconnection: true,
+		reconnectionDelay: 1000,
+		reconnectionDelayMax : 5000,
+		reconnectionAttempts: Infinity
+	} );
+
+	socket.on( 'connect', function () {
+		console.log( 'connected to server' );
+	} );
+
+	socket.on( 'disconnect', function () {
+		console.log( 'disconnected from server' );
+		window.setTimeout( 'connect()', 5000 );
+	} );
 
 	socket.on('joined_room', function(room){
 		vm.joinedRooms.push(room);
@@ -575,14 +592,11 @@ connect = function(name){
 		var urlMsgsToEmbed = [];
 
 		var withBrs = '';
-		console.log(msg.msg);
 		var msgTextRecieved = msg.msg.split('\n');
-		console.log(msgTextRecieved);
 		for(var i = 0; i <msgTextRecieved.length; i++){
 			withBrs += msgTextRecieved[i] + '<br/>';
 		}
 		msgTextRecieved = withBrs.split(' ');
-		console.log(msgTextRecieved);
 		var msgTextDisplayed = ''; //make as innerHTML later
 		for(var word in msgTextRecieved){
 			if(isUrlValid(msgTextRecieved[word])){
@@ -631,7 +645,7 @@ connect = function(name){
 		removeRoom(room);
 		vm.allGames = updateGames();
 		$('#' +vm.currentRoom+ '_messages').show();
-		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Left Room:'+room).css('color','blue'));  /***MESSAGE***/
+		$('#'+vm.currentRoom+'_messages').append($('<li class="internalMessage">').text('Left Room:'+room));  /***MESSAGE***/
 		alignMessageToBottom();
 	});
 	socket.on('get_canvas', function(msg){
@@ -672,7 +686,10 @@ connect = function(name){
 	});
 	
 	socket.on('force_name_update', function(newName){ //room name
+		console.log("Name force updated:" + newName)
 		socket.username = newName;
+		vm.nickname = newName;
+		localStorage.setItem('nickname', JSON.stringify(newName));
 	});
 	
 	socket.on('drawing', onDrawingEvent);
@@ -732,11 +749,11 @@ connect = function(name){
 				}else{
 					vm.currentRoom = userId;
 				}
-				socket.emit('chat_message', newMsg(socket.id, socket.username, userId, message));
-				$('#'+vm.currentRoom+'_messages').append($('<li>').text(socket.username + ":" + message));  /***MESSAGE***/
+				socket.emit('chat_message', newMsg(socket.id, socket.username, userId, message, vm.userId));
+				$('#'+vm.currentRoom+'_messages').append($('<li class="directMessage">').text(socket.username + ":" + message));  /***MESSAGE needs styles???**/
 				vm.currentRoomType = roomType.dm;
 			}else{
-				$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid user.').css('color','red'));  /***MESSAGE***/
+				$('#'+vm.currentRoom+'_messages').append($('<li class="internalMessageError">').text('Invalid user.'));  /***MESSAGE***/
 			}
 			clearAndScroll();
 		}else if(inputvalArgs[0]=="name"){
@@ -759,7 +776,7 @@ connect = function(name){
 			
 			socket.username = name;
 			socket.avatar = avatar;
-			socket.emit('assign_name', newMsg(socket.id, socket.username, vm.currentRoom, name), avatar);
+			socket.emit('assign_name', newMsg(socket.id, socket.username, vm.currentRoom, name, vm.userId), avatar);
 
 		}else if(inputvalArgs[0]=="debug"){
 			socket.emit('debug server');
@@ -795,19 +812,30 @@ connect = function(name){
 				return;
 			}				
 		}else{
-			$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
+			$('#'+vm.currentRoom+'_messages').append($('<li class="internalMessageError">').text('Invalid command.')); /***MESSAGE***/
 		}
 		clearAndScroll();
 	}
 	invalidCommand = function(){
-		$('#'+vm.currentRoom+'_messages').append($('<li>').text('Invalid command.').css('color','red')); /***MESSAGE***/
+		$('#'+vm.currentRoom+'_messages').append($('<li class="internalMessageError">').text('Invalid command.')); /***MESSAGE***/
 	}
 
-	socket.username = name;
-	socket.emit('assign_name', newMsg(socket.id, socket.username, vm.currentRoom, name));
-	console.log("First name change:" + socket.id + "->" + name);
+	//init
+	if(!localStorage.getItem('nickname')){
+		console.log('setting nickname');
+		localStorage.setItem('nickname', JSON.stringify(vm.nickname));
+	}
+	if(!localStorage.getItem('userId')){
+		console.log('setting userId');
+		vm.userId = uuidv4();
+		localStorage.setItem('userId', JSON.stringify(vm.userId));
+	}
+	socket.username = vm.nickname;
+	socket.emit('join_room', serverRoom, serverRoom, roomType.server);
+	socket.emit('join_room', defaultRoom,defaultRoom, roomType.chat);
+	socket.emit('assign_name', newMsg(socket.id, socket.username, vm.currentRoom, vm.nickname, vm.userId));
+	console.log("First name change:" + socket.id + "->" + vm.nickname);
 }
-
 
 function isUrlValid(userInput) {
 	var urlPattern = /(http|ftp|https):\/\/[\w-]+(\.[\w-]+)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?/
@@ -816,9 +844,6 @@ function isUrlValid(userInput) {
         return false;
     else
         return true;
-}
-buildServerTable  = function(){
-	console.log("build server table");
 }
 
 roomExists= function(id){
@@ -1020,12 +1045,13 @@ getName = function(msg){
 	return output;
 }
 
-newMsg = function(id,username,room,message){
+newMsg = function(id,username,room,message,userId){
 	var msg = new Object();
 	msg.id = id;
 	msg.username = username;
 	msg.room = room;
 	msg.msg = message;
+	msg.userId = userId;
 	return msg
 }
 
@@ -1069,6 +1095,12 @@ clearAndScroll = function (){
 	focusCursor('msgForm',1);
 }
 
+uuidv4 = function() {
+	return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+	  (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+	)
+}
+
 toggleEmojiPicker = function(){
 	$('#emojiDiv').toggle();
 }
@@ -1094,4 +1126,12 @@ insertEmo = function(emo){
 }
 $(document).ready(function() {
 	createEmojis();
+	var nick = JSON.parse(localStorage.getItem('nickname'));
+	var userId = JSON.parse(localStorage.getItem('userId'));
+	if(nick && userId){
+		vm.nickname = nick; 
+		vm.userId = userId;
+		console.log(' Auto Re-Starting... '+vm.nickname + ' ' + vm.userId)
+		vm.start();
+	}
 });
