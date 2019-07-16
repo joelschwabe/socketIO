@@ -399,7 +399,7 @@ addUser = function(msg, avatar){
 		}
 	}
 	if(dupName){
-		if((!existsUuid && !exists)){
+		if((!existsUuid && !existsId)){
 			newUsr = fixDupName(newUsr); //add to name  +1
 			userList.push(newUsr);
 		}else{

@@ -560,7 +560,15 @@ connect = function(){
 	} );
 
 	socket.on('joined_room', function(room){
-		vm.joinedRooms.push(room);
+		var alreadyIn = false;
+		for(var i=0;i< vm.joinedRooms.length; i++){
+			if (vm.joinedRooms[i].name == room.name){
+				alreadyIn = true;
+			}
+		}
+		if(!alreadyIn){
+			vm.joinedRooms.push(room);
+		}
 		vm.roomList[room.name] = room; //important
 		var oldRoom = vm.currentRoom;
 		vm.currentRoom = room.name;
