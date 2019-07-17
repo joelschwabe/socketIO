@@ -71,7 +71,7 @@ Vue.component('message-area', {
 					'<div v-if="hasCanvas && !isServer" class="gameMessageAreaContainer">' +
 						'<canvas :id="cursorCanvasID" class="cursor_class"></canvas>'+
 						'<canvas :id="roomId" :class="roomClass"></canvas>'+
-						'<div :id="gameDivId" :class="gameDivClass"></div>'+
+						'<div :id="gameDivId" :class="gameDivClass"><div id="tic"></div></div>'+
 						'<ul :id="gameMessages" :class="gameClass"></ul>'+
 					'</div>'+
 					'<div v-else="!hasCanvas && !isServer">' +
@@ -702,7 +702,8 @@ connect = function(){
 	socket.on('drawing', onDrawingEvent);
 	socket.on('track_cursor', onTrackCursor);
 	socket.on('clear_canvas', clearCanvas);
-	
+	socket.on('start_game', startGame);
+
 	join = function(inputAr, type){
 		if(inputAr.length < 2){
 			invalidCommand();
@@ -1012,6 +1013,10 @@ formatVideoOutput = function(mediaChk){
 createGame = function(){
 	var room = generateGameRoomName();
 	socket.emit('join_room', room, vm.currentRoom, roomType.game);
+}
+
+startGame = function(){
+	
 }
 
 pickPaintTool = function(type){

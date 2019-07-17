@@ -92,6 +92,7 @@ io.on('connection', function(socket){
 					if(playersReady){
 						console.log("Game ready");
 						statusN = gameStatus.ready;
+						
 					}else{
 						console.log("Game waiting");
 						statusN = gameStatus.waiting;

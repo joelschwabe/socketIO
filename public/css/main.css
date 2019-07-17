@@ -303,3 +303,14 @@ form button {
 .polygon{
 	cursor: url('../images/polygon.png') 27 27, none;
 }
+.tacSquare{
+	width: 50px;
+	height:50px;
+	background-color: gray;
+	border-color: black;
+	border-style: solid;
+	border-width: 2px;
+	font-size: xx-large;
+	font-weight: bolder;
+	text-align: center;
+  }
