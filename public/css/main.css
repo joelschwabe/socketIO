@@ -233,6 +233,11 @@ form button {
 	margin-left: 5px;
     margin-bottom: -6px;
 }
+.msgDisplayTime{
+	font-weight: 600;
+	font-stretch: condensed;
+	font-size: smaller;
+}
 .internalMessage{
 	color: #12ceef;
 	font-weight:bold;

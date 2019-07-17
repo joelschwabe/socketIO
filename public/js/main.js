@@ -502,7 +502,7 @@ var vm = new Vue({
 			}
 		},
 		sendMessage : function(){
-			//var inputval = $('#msgForm').val();
+			vm.formMessage += ' ';
 			var inputval = vm.formMessage;
 			if(inputval.charAt(0) == '/'){
 				checkCommand(inputval.substring(1, inputval.length)); //trim off '/'
@@ -518,8 +518,8 @@ var vm = new Vue({
 		},
 		messageEnter : function(event){
 			if ( event.which == 13 && !event.shiftKey) {
-				this.sendMessage();
 				event.preventDefault(); //don't let the newline on to the textarea after sending
+				this.sendMessage();
 			}
 			vm.msgCursorIndex = $('#msgForm').prop("selectionStart") + 1;
 		},
@@ -871,7 +871,7 @@ appendImage = function(msg){
 }
 
 appendText = function(msg){
-	$('#'+msg.room+'_messages').append($('<li class="messageText">').append('<img class="userIcon" src="'+getAvatarFromName(msg.username)+'"/><div class="messageTextContainer"><span class="msgDisplayName">'+getName(msg)+'</span>' + '<div class="messageDisplayText">'+msg.msg+ '</div></div>'));
+	$('#'+msg.room+'_messages').append($('<li class="messageText">').append('<img class="userIcon" src="'+getAvatarFromName(msg.username)+'"/><div class="messageTextContainer"><span class="msgDisplayName">'+getName(msg)+'</span><span class="msgDisplayTime">' + getTime() + '</span><div class="messageDisplayText">'+msg.msg+ '</div></div>'));
 }
 
 appendVideo = function(msg){
@@ -1051,6 +1051,22 @@ getName = function(msg){
 		output = "anon";
 	}
 	return output;
+}
+
+getTime = function (){
+	var d = new Date();
+	var h = d.getHours();
+	var apm = 'AM';
+	if(h > 12){
+		h = h-12;
+		apm = 'PM';
+	}
+	var m = d.getMinutes();
+	if(m < 10){
+		d = "0" + d;
+	}
+	var dtime = ' - ' + h + ":" + m + " " + apm;
+	return dtime;
 }
 
 newMsg = function(id,username,room,message,userId){
