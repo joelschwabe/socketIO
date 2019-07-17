@@ -502,7 +502,6 @@ var vm = new Vue({
 			}
 		},
 		sendMessage : function(){
-			vm.formMessage += ' ';
 			var inputval = vm.formMessage;
 			if(inputval.charAt(0) == '/'){
 				checkCommand(inputval.substring(1, inputval.length)); //trim off '/'
@@ -602,7 +601,7 @@ connect = function(){
 		var withBrs = '';
 		var msgTextRecieved = msg.msg.split('\n');
 		for(var i = 0; i <msgTextRecieved.length; i++){
-			withBrs += msgTextRecieved[i] + '<br/>';
+			withBrs += msgTextRecieved[i] + ' <br/>';
 		}
 		msgTextRecieved = withBrs.split(' ');
 		var msgTextDisplayed = ''; //make as innerHTML later
