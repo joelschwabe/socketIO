@@ -19,29 +19,37 @@
 	</div>
 	<div id="main">
 		<div id="messages">
-		<div class="messageAreaContainer">
-			<div id="Servers_messages" class="server_class">
-			<table class="serverTable">
-			<tr>
-				<th>Players</th>
-				<th>Name</th>
-				<th>Type</th>
-				<th>Status</th>
-				<th><button class="tableButton" onclick="createGame()">Create Game</button></th>
-			</tr>
-			<tr is="server-row" 
-				v-for="game in allGames" 
-				v-bind:game="game"	
-				v-bind:key="game.name">
-			</tr>
-			</table>
+			<div class="messageAreaContainer">
+				<div id="Servers_messages" class="server_class">
+				<table class="serverTable">
+				<tr>
+					<th>Players</th>
+					<th>Name</th>
+					<th>Type</th>
+					<th>Status</th>
+					<th><button class="tableButton" onclick="showCreateGamePopup()">Create Game</button></th>
+				</tr>
+				<tr is="server-row" 
+					v-for="game in allGames" 
+					v-bind:game="game"	
+					v-bind:key="game.name">
+				</tr>
+				</table>
+				</div>
 			</div>
-		</div>
 			<message-area
 			  v-for="room in joinedRooms"
 			  v-bind:room="room"
 			  v-bind:key="room.name"
 			></message-area>
+			<div id="gameCreationPopup">
+				<p>Game Type:</p>
+				<input type="radio" name="gameType" id="choosePaintGame">Paint </br>
+				<input type="radio" name="gameType" id="chooseTicTacGame">TicTac </br>
+				<input type="text" id="chooseGameName" placeholder="Game Name (Optional)"></br>
+				<input type="text" id="chooseGamePass" placeholder="Password" disabled><input type="checkbox" id="chooseGamePriv" onclick="togglePasswordField()" unchecked> Private?
+				<button class="tableButton" onclick="processCreateGame()">Create</button>
+			</div>
 		</div>
 		<div class="sideBar">
 			<div id="rooms">

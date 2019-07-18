@@ -117,7 +117,7 @@ io.on('connection', function(socket){
 		if(socket.adapter.rooms[msg.room].roomStatus == gameStatus.ready){
 			message = "Starting Game...";
 			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
-			io.to(msg.room).emit('start_game', msg.msg); //start game just needs to be emitted to the room to be valid
+			io.to(msg.room).emit('start_game', msg); 
 			socket.adapter.rooms[msg.room].roomStatus = gameStatus.playing;
 			io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
 		}else{
@@ -224,7 +224,9 @@ io.on('connection', function(socket){
 	
 	socket.on('join_room', function(room, fromRoom, type, pword,gType){
 		if(!room){
-			console.log('no room name');
+			var message = "Must have a room name.";
+			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
+			console.log('No room name...');
 			return
 		};
 		var maxUsersPerRoom;
@@ -235,11 +237,6 @@ io.on('connection', function(socket){
 			maxUsersPerRoom = maxUsersPerChatRoom;
 		}else{
 			maxUsersPerRoom = 9999;//or something
-		}
-		if(room.length < 1){
-			var message = "Must have a room name.";
-			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
-			return;
 		}
 		if(socket.adapter.rooms.hasOwnProperty(room)){
 			console.log("room exists");
@@ -270,7 +267,7 @@ io.on('connection', function(socket){
 						var message = getName(socket) + " joined " + room;
 						io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
 						io.to(socket.id).emit('joined_room', thisRoom);
-						if(socket.adapter.rooms[room].type == roomType.game){
+						if(socket.adapter.rooms[room].type == roomType.game && socket.adapter.rooms[room].gameType == gameType.paint ){
 							socket.to(room).emit('get_canvas', newMsg(socket.id, socket.username,room))
 						}
 					}

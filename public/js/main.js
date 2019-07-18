@@ -35,7 +35,7 @@ Vue.component('rooms-list-item', {
 			return this.room.name + '_room';
 		},
 		roomClass: function(){
-			return this.room.type + '_class inactiveRoom roomlist_class';
+			return 'inactiveRoom roomlist_class';
 		},
 		roomName: function(){
 			return this.room.name + " - (" + this.room.type + ")";
@@ -68,13 +68,17 @@ Vue.component('rooms-list-item', {
 Vue.component('message-area', {
 	props: ['room'],
 	template: 	'<div class="messageAreaContainer">'+
-					'<div v-if="hasCanvas && !isServer" class="gameMessageAreaContainer">' +
-						'<canvas :id="cursorCanvasID" class="cursor_class"></canvas>'+
-						'<canvas :id="roomId" :class="roomClass"></canvas>'+
-						'<div :id="gameDivId" :class="gameDivClass"><div :id="ticDivId" :class="gameTypeClass"></div></div>'+
+					'<div v-if="isGame && !isServer" class="gameMessageAreaContainer">' +
+						'<div v-if="hasCanvas">'+
+							'<canvas :id="cursorCanvasID" class="cursor_class"></canvas>'+
+							'<canvas :id="roomId" :class="roomClass"></canvas>'+
+						'</div>'+
+						'<div v-if="hasGameDiv">'	+
+							'<div :id="gameDivId" :class="gameDivClass"><div :id="ticDivId" :class="gameTypeClass"></div></div>'+
+						'</div>'+
 						'<ul :id="gameMessages" :class="gameClass"></ul>'+
 					'</div>'+
-					'<div v-else="!hasCanvas && !isServer">' +
+					'<div v-else="!isGame && !isServer">' +
 						'<ul :id="roomId" :class="roomClass"></ul>'+
 					'</div>'+
 				'</div>',
@@ -112,15 +116,21 @@ Vue.component('message-area', {
 		gameClass: function(){
 			return this.room.type + '_message';
 		},
-		hasCanvas : function(){
+		isGame : function(){
 			return (this.room.type==roomType.game);
+		},
+		hasCanvas : function(){
+			return (this.room.gameType==gameType.paint);
+		},
+		hasGameDiv : function(){
+			return (this.room.gameType==gameType.tictac);
 		},
 		isServer : function(){
 			return (this.room.type==roomType.server);
 		}
 	},
 	mounted: function () {
-		if(this.room.type==roomType.game){
+		if(this.room.type==roomType.game && this.room.gameType==gameType.paint){
 			canvas = document.getElementById(this.room.name+'_canvas');
 			cursorCanvas = document.getElementById(this.room.name+'_cursor_canvas');
 			context = canvas.getContext('2d');
@@ -706,8 +716,8 @@ connect = function(){
 	socket.on('track_cursor', onTrackCursor);
 	socket.on('clear_canvas', clearCanvas);
 	socket.on('game_ready', readyGame);
-	socket.on('start_game', function(params){
-		startGame(parseInt(params.size));
+	socket.on('start_game', function(msg){
+		startGame(msg.room,parseInt(msg.msg.size));
 	});
 
 	join = function(inputAr, type){
@@ -867,18 +877,6 @@ function isUrlValid(userInput) {
         return true;
 }
 
-roomExists= function(id){
-	return $('#'+id+'_room').length
-}
-
-generateGameRoomName = function(){
-	var name = '';
-	for(var i=0; i < 6; i++){
-		name += String.fromCharCode(Math.floor((Math.random()*26)+65)); //A -> Z code
-	}
-	return name;
-}
-
 appendImage = function(msg){
 	$('#'+msg.room+'_messages').append($('<li class="messageMedia">').append($('<img width="500" src="'+msg.msg+'"/>')));
 }
@@ -1023,10 +1021,47 @@ formatVideoOutput = function(mediaChk){
 	return output;
 }
 
-createGame = function(){
-	var room = generateGameRoomName();
-	//something to choose type......
-	socket.emit('join_room', room, vm.currentRoom, roomType.game, null, gameType.tictac);
+showCreateGamePopup = function(){
+	$('#gameCreationPopup').toggle();
+}
+
+togglePasswordField = function(){
+	$('#chooseGamePass').prop("disabled", function(i, origValue){
+		return !origValue;
+	  })
+}
+
+processCreateGame = function(){
+	var pg = $('#choosePaintGame').prop("checked");
+	var tt = $('#chooseTicTacGame').prop("checked");
+	var roomName = $('#chooseGameName')[0].value;
+	var gamePass = $('#chooseGamePass')[0].value;
+	var gType;
+	if(pg){
+		gType = gameType.paint;
+	}else{
+		gType = gameType.tictac;
+	}
+	if(gamePass == ''){
+		gamePass = null;
+	}
+	if(roomName==''){
+		roomName = generateGameRoomName();
+	}
+	$('#gameCreationPopup').toggle();
+	socket.emit('join_room', roomName, vm.currentRoom, roomType.game, gamePass, gType);
+}
+
+roomExists= function(id){
+	return $('#'+id+'_room').length
+}
+
+generateGameRoomName = function(){
+	var name = '';
+	for(var i=0; i < 6; i++){
+		name += String.fromCharCode(Math.floor((Math.random()*26)+65)); //A -> Z code
+	}
+	return name;
 }
 
 readyGame = function(){
@@ -1034,10 +1069,10 @@ readyGame = function(){
 	$('#' +vm.currentRoom+ '_game').show();
 }
 
-startGame = function(size){
-	makeBoard(vm.currentRoom, size);
-	$('#' +vm.currentRoom+ '_game').show();
-	$('#' +vm.currentRoom+ '_tictac').show();
+startGame = function(room, size){
+	makeBoard(room, size);
+	$('#' +room+ '_game').show();
+	$('#' +room+ '_tictac').show();
 }
 
 pickPaintTool = function(type){

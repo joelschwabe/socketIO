@@ -183,6 +183,7 @@ form button {
 .game_class{
 	overflow-y: hidden;
 	overflow-x: hidden;
+	margin-bottom: -5px;
 }
 .gameDivClass{
 	position: absolute;
@@ -204,9 +205,9 @@ form button {
 	z-index: 2;
 }
 .game_message{
-	position: relative;
-    margin-top: -100px;
-    height: 97px;
+	position: absolute;
+	bottom: 0px;
+    height: 100px;
     width: 100%;
     overflow-y: auto;
 	z-index: 5;
@@ -321,5 +322,18 @@ form button {
 .tictac{
 	margin-top: 10%;
     margin-left: 35%;
+ }
+ #gameCreationPopup{
+    display: none;
+    position: absolute;
+    background-color: white;
+    border: 15px solid #d2d228;
+    padding: 10px;
+    border-radius: 15px;
+    left: 40%;
+    top: 30%;
+    font-weight: bold;
+    font-size: medium;
+    font-stretch: ultra-expanded;
  }
  
