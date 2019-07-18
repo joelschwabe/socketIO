@@ -4,9 +4,10 @@ var express = require('express'),
 app.use(express.static('public'));
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
+var tictac = require('./tictac');
 
 const port = 3000;
-const minUsersPerGameRoom = 3;
+const minUsersPerGameRoom = 2;
 const maxUsersPerGameRoom = 6;
 const maxUsersPerChatRoom = 50;
 const defaultRoom = 'General';
@@ -39,7 +40,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', function(req, res) {
     res.redirect('index.html');
 });
-
 var userList = [];
 var gamelist = [];
 var roomSecret = {}; //{roomName:'secret'}

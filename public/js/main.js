@@ -1016,7 +1016,8 @@ createGame = function(){
 }
 
 startGame = function(){
-	
+	makeBoard();
+	$('#' +vm.currentRoom+ '_game').show();
 }
 
 pickPaintTool = function(type){

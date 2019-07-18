@@ -1,7 +1,7 @@
 var size = 7;
 var limit = size * size;
 var winLength = 4;
-var winTheta = winLength - 1;
+var winDelta = winLength - 1;
 var counter = 0;
 var matrix = [];
 var xo = true;
@@ -36,42 +36,56 @@ gameOver = function(){
 	for(var i = 0; i < matrix.length; i++){
 		for(var j = 0; j < matrix[i].length; j++){
 				//console.log(matrix[i]);
-				if(j > winTheta){ //westeast
-				console.log("east and west");
+				if(j > winDelta){ //west
+				console.log("west");
 					if(turboLogic(i,j,'','-')){  
 						winner = matrix[i][j];
 						ended = true;
 					}	
 				}
-				if(i > winTheta) {//north and south
-					console.log("north and south");
+				if(j < winDelta){ //east
+					console.log("east");
+						if(turboLogic(i,j,'','+')){  
+							winner = matrix[i][j];
+							ended = true;
+						}	
+					}
+				if(i > winDelta) {//north
+					console.log("north");
 					if(turboLogic(i,j,'-',"")){
 						winner = matrix[i][j];
 						ended = true;
 					}	
 				}
-				if((i < winTheta) && (j > winTheta)){//southwest
+				if(i < winDelta) {// south
+					console.log("south");
+					if(turboLogic(i,j,'+',"")){
+						winner = matrix[i][j];
+						ended = true;
+					}	
+				}				
+				if((i < winDelta) && (j > winDelta)){//southwest
 					console.log("southwest");
 					if(turboLogic(i,j,'+',"-")){
 						winner = matrix[i][j];
 						ended = true;
 					}
 				}
-				if((i > winTheta) && (j < winTheta)){//northeast
+				if((i > winDelta) && (j < winDelta)){//northeast
 					console.log("northeast");
 					if(turboLogic(i,j,'-',"+")){
 						winner = matrix[i][j];
 						ended = true;
 					} 
 				}
-				if((i > winTheta) && (j > winTheta)){//northwest
+				if((i > winDelta) && (j > winDelta)){//northwest
 					console.log("northwest");
 					if(turboLogic(i,j,'-',"-")){
 						winner = matrix[i][j];
 						ended = true;
 					} 
 				}
-				if((i < winTheta) && (j < winTheta)){//southeast
+				if((i < winDelta) && (j < winDelta)){//southeast
 					console.log("southeast");
 					if(turboLogic(i,j,'+',"+")){
 						winner = matrix[i][j];
@@ -86,7 +100,7 @@ gameOver = function(){
 turboLogic = function( i, j, op1, op2){
 	if(matrix[i][j] == '') return false;
 	var op1x, op1y, op2x, op2y;
-	for(var k = 0; k < winTheta; k++){
+	for(var k = 0; k < winDelta; k++){
 		if(op1=="+"){
 			op1x = i + k;
 			op2x = i + k + 1;
@@ -121,6 +135,7 @@ turboLogic = function( i, j, op1, op2){
 
 makeBoard = function(){
 	$("#tic").empty();
+	matrix = [];
 	var tableTic = "<table id='tictac'><table>";
 	$("#tic").append(tableTic);
 	for(var i = 0; i < size; i++){

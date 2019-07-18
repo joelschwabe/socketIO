@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8"></meta>
+    <title>TicTacToe</title>
+	<style>
+	.tacSquare{
+	width: 50px;
+	height:50px;
+	background-color: gray;
+	border-color: black;
+	border-style: solid;
+	border-width: 2px;
+	font-size: xx-large;
+	font-weight: bolder;
+	text-align: center;
+  }
+  </style>
+	  </head>
+  <body>
+  <div id="app">
+  <div id="tic"></div>
+  
+  </div>
+  	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  	<script src="/js/tictac.js" type="application/javascript"></script>
+	<script>
+	$(document).ready(function() {
+		makeBoard();
+	});
+	</script>
+  </body>
+  </html>
