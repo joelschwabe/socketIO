@@ -27,6 +27,10 @@ const gameStatus = {
 		playing: 'playing',
 		finished: 'finished'
 	};		
+const gameType = {
+		tictac: 'tictac',
+		paint: 'paint'
+	};		
 const playerStatus = {
 		idle: 'idle',
 		ready: 'ready',
@@ -113,7 +117,7 @@ io.on('connection', function(socket){
 		if(socket.adapter.rooms[msg.room].roomStatus == gameStatus.ready){
 			message = "Starting Game...";
 			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
-			io.to(msg.room).emit('start_game', msg); //start game just needs to be emitted to the room to be valid
+			io.to(msg.room).emit('start_game', msg.msg); //start game just needs to be emitted to the room to be valid
 			socket.adapter.rooms[msg.room].roomStatus = gameStatus.playing;
 			io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
 		}else{
@@ -218,7 +222,7 @@ io.on('connection', function(socket){
 		io.to(msg.id).emit('canvas_deliver', newMsg(serverName, serverName,null,msg.msg)); //canvas image
 	});
 	
-	socket.on('join_room', function(room, fromRoom, type, pword){
+	socket.on('join_room', function(room, fromRoom, type, pword,gType){
 		if(!room){
 			console.log('no room name');
 			return
@@ -286,7 +290,10 @@ io.on('connection', function(socket){
 					socket.join(room);
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
-					socket.adapter.rooms[room].roomStatus = gameStatus.created;
+					if(type == roomType.game){
+						socket.adapter.rooms[room].roomStatus = gameStatus.created;
+						socket.adapter.rooms[room].gameType = gameType[gType];
+					}
 					socket.adapter.rooms[room].playerStatus = {};
 					var message = getName(socket) + " created " + type + " " + room;
 					io.to(fromRoom).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
@@ -297,10 +304,12 @@ io.on('connection', function(socket){
 					roomPassword[room] = pword;
 					socket.adapter.rooms[room].type = type;
 					socket.adapter.rooms[room].name = room;
-					socket.adapter.rooms[room].roomStatus = gameStatus.created;
+					if(type == roomType.game){
+						socket.adapter.rooms[room].roomStatus = gameStatus.created;
+						socket.adapter.rooms[room].gameType = gameType[gType];
+					}
 					socket.adapter.rooms[room].playerStatus = {};
 					io.to(socket.id).emit('joined_room', socket.adapter.rooms[room]);
-
 				}
 				updateGameList(socket);
 				io.emit('update_game_list', gamelist);
@@ -371,6 +380,7 @@ updateGameList = function(socket){
 	for(var room in socket.adapter.rooms){	
 		if(socket.adapter.rooms[room].type == roomType.game){
 			var game = {
+				gameType: socket.adapter.rooms[room].gameType,
 				players: socket.adapter.rooms.sockets,
 				name: socket.adapter.rooms[room].name,
 				status: socket.adapter.rooms[room].roomStatus

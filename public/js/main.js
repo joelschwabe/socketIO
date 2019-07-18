@@ -9,7 +9,7 @@ Vue.component('message-item', {
 });
 Vue.component('server-row', {
 	props: ['game'],
-	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.status}}</td><td><button :id="buttonId" class="tableButton">Join</button></td></tr>',
+	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.gameType}}</td><td>{{game.status}}</td><td><button :id="buttonId" class="tableButton">Join</button></td></tr>',
 	computed: {
 		buttonId: function(){
 			return "joinButton_" + this.game.name;
@@ -19,7 +19,7 @@ Vue.component('server-row', {
 		console.log("element mounted:" + this);
 		var that = this;
 		$('#joinButton_'+this.game.name).click(function () {
-			vm.joinGame(that.game.name);
+			vm.joinGame(that.game.name, that.game.gameType);
 		});
 	}
 });
@@ -71,7 +71,7 @@ Vue.component('message-area', {
 					'<div v-if="hasCanvas && !isServer" class="gameMessageAreaContainer">' +
 						'<canvas :id="cursorCanvasID" class="cursor_class"></canvas>'+
 						'<canvas :id="roomId" :class="roomClass"></canvas>'+
-						'<div :id="gameDivId" :class="gameDivClass"><div id="tic"></div></div>'+
+						'<div :id="gameDivId" :class="gameDivClass"><div :id="ticDivId" :class="gameTypeClass"></div></div>'+
 						'<ul :id="gameMessages" :class="gameClass"></ul>'+
 					'</div>'+
 					'<div v-else="!hasCanvas && !isServer">' +
@@ -94,11 +94,17 @@ Vue.component('message-area', {
 		gameDivClass: function(){
 			return this.room.type + '_class' + ' gameDivClass';
 		},
+		gameTypeClass: function(){
+			return this.room.gameType;
+		},
 		gameMessages : function(){
 			return this.room.name + '_messages';
 		},
 		gameDivId : function(){
 			return this.room.name + '_game';
+		},
+		ticDivId :  function(){
+			return this.room.name + '_' + this.room.gameType;
 		},
 		cursorCanvasID: function(){
 			return this.room.name + '_cursor_canvas';
@@ -129,7 +135,6 @@ Vue.component('message-area', {
 	}
 });
 
-
 Vue.component('users-list-item', {
   props: ['user'],
   template: '<li class="userListItem">' +
@@ -141,40 +146,36 @@ Vue.component('users-list-item', {
 const defaultRoom = 'General';
 const serverRoom = 'Servers';
 const roomType = {
-		game: 'game',
-		chat: 'chat',
-		dm: 'dm',
-		server: 'server'
-		};
+	game: 'game',
+	chat: 'chat',
+	dm: 'dm',
+	server: 'server'
+};
 const gameStatus = {
-		created: 'created',
-		waiting: 'waiting',
-		playing: 'playing',
-		finished: 'finished'
-		};		
+	created: 'created',
+	waiting: 'waiting',
+	playing: 'playing',
+	finished: 'finished'
+};
+const playerStatus = {
+	idle: 'idle',
+	ready: 'ready',
+	playing: 'playing'
+};			
+const gameType = {
+	tictac: 'tictac',
+	paint: 'paint'
+};					
 const drawType = {
-		brush: 'brush',
-		pencil: 'pencil',
-		eyedrop: 'eyedrop',
-		star: 'star',
-		line: 'line',
-		polygon:'polygon'
-		};		
+	brush: 'brush',
+	pencil: 'pencil',
+	eyedrop: 'eyedrop',
+	star: 'star',
+	line: 'line',
+	polygon:'polygon'
+};		
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
-const helpMessage = '<li class="serverHelpMessage">'+ 
-		'<div>' +
-		'<span>Help commands:</span><br/>' +
-		'<span> /help : Displays this list</span><br/>' +
-		'<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>' +
-		'<span> /joingame : Join a game room by entering a room name after the command.</span><br/>' +
-		'<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>' +
-		'<span> /leave : Leave any room by entering the room name.</span><br/>' +
-		'<span> /dm : Start a direct message room by entering the username.</span><br/>' +
-		'<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>' +
-		'<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>' +
-		'</div>' +
-	'</li>';
 		
 const emojiList = [
 	"1f600","1f603","1f604","1f601","1f606","1f605","1f923","1f602","1f642","1f643","1f609","1f60a","1f607","1f970","1f60d",
@@ -467,12 +468,14 @@ var vm = new Vue({
 			$('#' +this.currentRoom+ '_room').removeClass('inactiveRoom');
 			$('#' +this.currentRoom+ '_messages').show();
 			$('#' +this.currentRoom+ '_canvas').show();
+			$('#' +this.currentRoom+ '_game').show();
 			$('#' +this.currentRoom+ '_cursor_canvas').show();
 			if(oldRoom != this.currentRoom){
 				$('#' +oldRoom+ '_room').removeClass('activeRoom');
 				$('#' +oldRoom+ '_room').addClass('inactiveRoom');
 				$('#' +oldRoom+ '_messages').hide();
 				$('#' +oldRoom+ '_canvas').hide();
+				$('#' +oldRoom+ '_game').hide();
 				$('#' +oldRoom+ '_cursor_canvas').hide();
 			}
 			if(this.currentRoomType == roomType.game){
@@ -493,8 +496,8 @@ var vm = new Vue({
 			$('#main').show();
 			connect();
 		},
-		joinGame : function (room){
-			socket.emit('join_room', room, vm.currentRoom, roomType.game);
+		joinGame : function (room, type){
+			socket.emit('join_room', room, vm.currentRoom, roomType.game, null,type);
 		},
 		nicknameEnter : function(event){
 			if ( event.which == 13) {
@@ -702,7 +705,10 @@ connect = function(){
 	socket.on('drawing', onDrawingEvent);
 	socket.on('track_cursor', onTrackCursor);
 	socket.on('clear_canvas', clearCanvas);
-	socket.on('start_game', startGame);
+	socket.on('game_ready', readyGame);
+	socket.on('start_game', function(params){
+		startGame(parseInt(params.size));
+	});
 
 	join = function(inputAr, type){
 		if(inputAr.length < 2){
@@ -791,7 +797,7 @@ connect = function(){
 			console.log(socket);
 
 		}else if(inputvalArgs[0]=="help"){
-			$('#'+vm.currentRoom+'_messages').append(helpMessage);  /***MESSAGE***/
+			$('#'+vm.currentRoom+'_messages').append($('#helpMessage')[0].innerHTML);  /***MESSAGE***/
 			
 		}else if(inputvalArgs[0]=="secret"){
 			if(inputvalArgs.length < 2){
@@ -806,12 +812,19 @@ connect = function(){
 				return;
 			}
 			socket.emit('guess_secret', newMsg(socket.id, socket.username, vm.currentRoom, inputvalArgs[1]));
-		}else if(inputvalArgs[0]=="start"){
+		}else if(inputvalArgs[0]=="start"){ //start 7 4 (start, 7x7 board, 4 to win)
 			if(vm.currentRoomType != roomType.game){
 				invalidCommand();
 				return;
 			}
-			socket.emit('start_game', newMsg(socket.id, socket.username, vm.currentRoom));
+			if(inputvalArgs.length < 3){
+				invalidCommand();
+				return;
+			}
+			var params = new Object();
+			params.size = inputvalArgs[1];
+			params.winLength = inputvalArgs[2];
+			socket.emit('start_game', newMsg(socket.id, socket.username, vm.currentRoom, params));
 		}else if(inputvalArgs[0]=="status"){
 			if(inputvalArgs.length == 2 ){
 				socket.emit('user_status_update', newMsg(socket.id, socket.username, vm.currentRoom, inputvalArgs[1]));
@@ -1012,12 +1025,19 @@ formatVideoOutput = function(mediaChk){
 
 createGame = function(){
 	var room = generateGameRoomName();
-	socket.emit('join_room', room, vm.currentRoom, roomType.game);
+	//something to choose type......
+	socket.emit('join_room', room, vm.currentRoom, roomType.game, null, gameType.tictac);
 }
 
-startGame = function(){
-	makeBoard();
+readyGame = function(){
+	makeLobby();
 	$('#' +vm.currentRoom+ '_game').show();
+}
+
+startGame = function(size){
+	makeBoard(vm.currentRoom, size);
+	$('#' +vm.currentRoom+ '_game').show();
+	$('#' +vm.currentRoom+ '_tictac').show();
 }
 
 pickPaintTool = function(type){
@@ -1101,7 +1121,8 @@ updateGames = function(){
 			var game = {
 				players: theseGamers,
 				name: vm.roomList[room].name,
-				status: vm.roomList[room].roomStatus
+				status: vm.roomList[room].roomStatus,
+				gameType: vm.roomList[room].gameType
 			}
 			allGames.push(game);
 		}

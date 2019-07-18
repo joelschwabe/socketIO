@@ -25,6 +25,7 @@
 			<tr>
 				<th>Players</th>
 				<th>Name</th>
+				<th>Type</th>
 				<th>Status</th>
 				<th><button class="tableButton" onclick="createGame()">Create Game</button></th>
 			</tr>
@@ -133,7 +134,22 @@
 	<script src="/js/main.js" type="application/javascript"></script>
 
 	<template id="loadingScreen">
-		
+
+	</template>
+	<template id="helpMessage">
+		<li class="serverHelpMessage">
+			<div>
+				<span>Help commands:</span><br/>
+				<span> /help : Displays this list</span><br/>
+				<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>
+				<span> /joingame : Join a game room by entering a room name after the command.</span><br/>
+				<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>
+				<span> /leave : Leave any room by entering the room name.</span><br/>
+				<span> /dm : Start a direct message room by entering the username.</span><br/>
+				<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>
+				<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>
+			</div>
+		</li>
 	</template>
   </body>
 </html>
