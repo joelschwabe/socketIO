@@ -524,7 +524,6 @@ var vm = new Vue({
 			if(vm.currentRoomType == roomType.dm){ //dm's are only sent to the user dm'd, so we need to keep track of the messages we sent
 				appendText(newMsg(vm.currentRoom, socket.username, vm.currentRoom,inputval));  /***MESSAGE***/
 			}
-			//$('#msgForm').val('');
 			vm.formMessage = '';
 			focusCursor('msgForm',1);
 		},
@@ -555,7 +554,7 @@ connect = function(){
 		socket = null;
 	}
 
-	socket = io.connect( 'ws://localhost:3000', {
+	socket = io.connect( 'ws://localhost:3000', { // external:  'ws://azazel.noip.me:44444' 
 		reconnection: true,
 		reconnectionDelay: 1000,
 		reconnectionDelayMax : 5000,
@@ -717,8 +716,15 @@ connect = function(){
 	socket.on('clear_canvas', clearCanvas);
 	socket.on('game_ready', readyGame);
 	socket.on('start_game', function(msg){
-		startGame(msg.room,parseInt(msg.msg.size));
+		startGame(msg.room,parseInt(msg.msg.boardSize));
 	});
+
+	socket.on('tac_click', function(click){
+		boxClicked(click);
+	});
+	socket.on('game_won', function(msg){
+		console.log("game won by:" + winner);
+	})
 
 	join = function(inputAr, type){
 		if(inputAr.length < 2){
@@ -832,7 +838,7 @@ connect = function(){
 				return;
 			}
 			var params = new Object();
-			params.size = inputvalArgs[1];
+			params.boardSize = inputvalArgs[1];
 			params.winLength = inputvalArgs[2];
 			socket.emit('start_game', newMsg(socket.id, socket.username, vm.currentRoom, params));
 		}else if(inputvalArgs[0]=="status"){
@@ -1062,6 +1068,10 @@ generateGameRoomName = function(){
 		name += String.fromCharCode(Math.floor((Math.random()*26)+65)); //A -> Z code
 	}
 	return name;
+}
+
+makeLobby = function(){
+	//TODO
 }
 
 readyGame = function(){

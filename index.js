@@ -48,6 +48,7 @@ var userList = [];
 var gamelist = [];
 var roomSecret = {}; //{roomName:'secret'}
 var roomPassword = {}; //{roomName:'password'}
+var activeGamesData = {};
 
 io.on('connection', function(socket){
 
@@ -75,8 +76,6 @@ io.on('connection', function(socket){
 	socket.on('user_status_update', function(msg){
 		if(!socket.adapter.rooms[msg.room]){return}
 		console.log("user status update");
-		console.log(msg);
-		console.log(socket.adapter.rooms[msg.room].type);
 		if(socket.adapter.rooms[msg.room].type == roomType.game){
 			if(msg.msg in playerStatus){
 				socket.adapter.rooms[msg.room].playerStatus[msg.id] = msg.msg;
@@ -102,7 +101,7 @@ io.on('connection', function(socket){
 						statusN = gameStatus.waiting;
 					}
 					socket.adapter.rooms[msg.room].roomStatus = statusN;
-					io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
+					io.emit('users_rooms_list', userList, socket.adapter.rooms); 
 				}else{
 					console.log("Game waiting");
 					statusN = gameStatus.waiting;
@@ -112,19 +111,98 @@ io.on('connection', function(socket){
 			}
 		}
 	});
+
 	socket.on('start_game', function(msg){
 		var message = '';
 		if(socket.adapter.rooms[msg.room].roomStatus == gameStatus.ready){
 			message = "Starting Game...";
-			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
-			io.to(msg.room).emit('start_game', msg); 
 			socket.adapter.rooms[msg.room].roomStatus = gameStatus.playing;
-			io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
+			io.emit('users_rooms_list', userList, socket.adapter.rooms); 
+			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+			if(socket.adapter.rooms[msg.room].gameType == gameType.tictac){
+				var iconArray = ['X','O','Z','H','B','S','K','N','M'];
+				var gameData = new Object();
+				gameData.matrix = [];
+				gameData.winLength = parseInt(msg.msg.winLength);
+				gameData.boardSize = parseInt(msg.msg.boardSize);
+				for(var i =0; i < gameData.boardSize; i++){
+					gameData.matrix.push([]);
+					for(var j =0; j < gameData.boardSize; j++){
+						gameData.matrix[i].push('');
+					}
+				}
+				var usersArray = Object.keys(socket.adapter.rooms[msg.room].sockets);
+				var usersObj = new Object();
+				for(var i=0;i < usersArray.length; i++){
+					usersObj[usersArray[i]] = new Object();
+					usersObj[usersArray[i]].score = 0;
+					usersObj[usersArray[i]].icon = iconArray[i];
+					usersObj[usersArray[i]].turn = i;
+					for(var k =0; k < userList.length; k++){
+						console.log(userList[k].id + " | " + usersArray[i] );
+						if(userList[k].id==usersArray[i]){
+							usersObj[usersArray[i]].name = userList[k].username;
+						}
+					}
+				}
+				gameData.turn = 0;
+				gameData.turnMax = usersArray.length-1; //zero index
+				var ticTacGame = newGame(msg.room,socket.adapter.rooms[msg.room].gameType, usersObj, gameData );
+				activeGamesData[msg.room] = ticTacGame;
+				console.log(activeGamesData);
+				io.to(msg.room).emit('start_game', msg); 
+				message = "It is " + usersObj[usersArray[0]].name + "'s turn.";
+				io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+			}else{
+				io.to(msg.room).emit('start_game', msg); 
+			}
+			socket.adapter.rooms[msg.room].roomStatus = gameStatus.playing;
+			io.emit('users_rooms_list', userList, socket.adapter.rooms);
 		}else{
 			message = "Unable to start game. Game not in ready state!";
 			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
 		}
 	});
+
+	socket.on('tic_click', function(msg){
+		var ticTacGame = activeGamesData[msg.room];
+		if(ticTacGame.game.turn == ticTacGame.users[msg.userId].turn){ //has to be your turn
+			if(ticTacGame.game.matrix[msg.y][msg.x] == ''){ //has to be empty square
+				ticTacGame.game.matrix[msg.y][msg.x] = ticTacGame.users[msg.userId].icon; //fill square
+				var winner = tictac.gameOver(ticTacGame.game.matrix,msg.y,msg.x,ticTacGame.game.winLength-1); //check results
+				console.log("Winner:" + winner);
+				var clickAction = new Object();
+				clickAction.icon = ticTacGame.users[msg.userId].icon;
+				clickAction.x = msg.x;
+				clickAction.y = msg.y;
+				clickAction.room = msg.room;
+				
+				if(winner == ''){
+					io.to(msg.room).emit('tac_click', clickAction);
+					ticTacGame.game.turn++;
+					if(ticTacGame.game.turn > ticTacGame.game.turnMax){
+						ticTacGame.game.turn = 0;
+					}
+					message = "It is " + ticTacGame.users[msg.userId].name + "'s turn.";
+					io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+				}else{
+					io.to(msg.room).emit('tac_click', clickAction);
+					socket.adapter.rooms[msg.room].roomStatus = gameStatus.finished;
+					io.emit('users_rooms_list', userList, socket.adapter.rooms); 
+					ticTacGame.game.turn = -1;
+					var winUser =  ticTacGame.users[msg.userId].name;
+					var message = winUser;
+					io.to(msg.room).emit('game_won', newMsg(serverName, serverName,msg.room,message));
+					message = winUser + " has won the game!";
+					io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+				}
+			}
+		}
+/* 		for(var i = 0; i < ticTacGame.game.matrix.length; i++){
+			console.log(ticTacGame.game.matrix[i]);
+		} */
+	});
+
 	socket.on('clear_canvas', function(msg){
 		io.to(msg.room).emit('clear_canvas', msg);
 	});
@@ -165,10 +243,11 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('debug server', function(){
-		console.log(io);
-		console.log(socket);
 		console.log(socket.adapter.rooms);
 		console.log(userList);
+		console.log(gamelist);
+		console.log(roomSecret);
+		console.log(activeGamesData);
 	});
 	
 	socket.on('assign_name', function(msg, avatar){
@@ -218,7 +297,6 @@ io.on('connection', function(socket){
 	});
 	
 	socket.on('got_canvas', function(msg){
-		console.log(msg.msg);
 		io.to(msg.id).emit('canvas_deliver', newMsg(serverName, serverName,null,msg.msg)); //canvas image
 	});
 	
@@ -461,6 +539,15 @@ newUser = function(id, userId,name, avatar){
 	usr.username = name;
 	usr.avatar = avatar;
 	return usr;
+}
+
+newGame = function(room, type, usersData, gameData){
+	var game = new Object();
+	game.room = room;
+	game.type = type;
+	game.users = usersData;
+	game.game = gameData;
+	return game;
 }
 
 getName = function(socket){

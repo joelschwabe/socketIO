@@ -335,5 +335,3 @@ function drawCursor(){
 function onTrackCursor(msg){
 	vm.cursors[msg.id] = msg;
 }
-
-
