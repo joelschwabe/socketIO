@@ -9,7 +9,7 @@ Vue.component('message-item', {
 });
 Vue.component('server-row', {
 	props: ['game'],
-	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.gameType}}</td><td>{{game.status}}</td><td><button :id="buttonId" class="tableButton">Join</button></td></tr>',
+	template: '<tr class="serverRow"><td>{{game.players.length}}</td><td>{{game.name}}</td><td>{{game.gameType}}</td><td>{{game.status}}</td><td><button :id="buttonId" v-if="game.status != \'playing\'" class="tableButton">Join</button></td></tr>',
 	computed: {
 		buttonId: function(){
 			return "joinButton_" + this.game.name;
@@ -59,7 +59,6 @@ Vue.component('rooms-list-item', {
 		}else{
 			$('#'+this.room.name + '_room').click(function () {
 				vm.chooseRoom(that.room);
-				
 			});
 		}
 	}
@@ -399,8 +398,11 @@ var vm = new Vue({
 		cursors: {},
 		currentRoom : defaultRoom, //referenced by .name which is unique
 		currentRoomType : roomType.chat,
+		currentGameType : '',
 		formMessage : '',
 		msgCursorIndex: 0,
+		boardSize : 3,
+		winLength : 3,
 		penCursor : {
 			type : drawType.pencil,
 			color: '#ff0000',
@@ -456,14 +458,14 @@ var vm = new Vue({
 				if(this.currentRoom != aRoom.id){
 					var oldRoom = this.currentRoom;
 					this.currentRoom = aRoom.id;
-					this.currentRoomType = roomType[aRoom.type];
+					//this.currentRoomType = roomType[aRoom.type];
 					this.toggleActiveRooms(oldRoom);
 				}
 			}else{ 
 				if(this.currentRoom != aRoom.name){
 					var oldRoom = this.currentRoom;
 					this.currentRoom = aRoom.name;
-					this.currentRoomType = roomType[aRoom.type];
+					//this.currentRoomType = roomType[aRoom.type];
 					this.toggleActiveRooms(oldRoom);
 				}
 			}
@@ -472,6 +474,7 @@ var vm = new Vue({
 			for(var room in this.joinedRooms){
 				if(this.currentRoom == this.joinedRooms[room].name){
 					this.currentRoomType = this.joinedRooms[room].type;
+					this.currentGameType = this.joinedRooms[room].gameType;
 				}
 			}
 			$('#' +this.currentRoom+ '_room').addClass('activeRoom');
@@ -488,17 +491,22 @@ var vm = new Vue({
 				$('#' +oldRoom+ '_game').hide();
 				$('#' +oldRoom+ '_cursor_canvas').hide();
 			}
-			if(this.currentRoomType == roomType.game){
+			if(this.currentGameType == gameType.paint){
 				$('#canvasControls').show();
+				$('#ticTacControls').hide();
+			}else if(this.currentGameType == gameType.tictac){
+				$('#ticTacControls').show();
+				$('#canvasControls').hide();
 			}else{
 				$('#canvasControls').hide();
-				alignMessageToBottom();
+				$('#ticTacControls').hide();
 			}
 			if(this.currentRoomType == roomType.server){
 				$('#msgForm').prop('disabled', true);
 			}else{
 				$('#msgForm').prop('disabled', false);
 			}
+			alignMessageToBottom();
 			this.usersInRoom = this.getUsersInRoom(this.currentRoom);
 		},
 		start : function(){
@@ -554,12 +562,13 @@ connect = function(){
 		socket = null;
 	}
 
-	socket = io.connect( 'ws://localhost:3000', { // external:  'ws://azazel.noip.me:44444' 
+	socket = io();
+/* 	socket = io.connect('ws://192.168.1.74:3000' , { // external:  'ws://azazel.noip.me:44444'  local: 'ws://192.168.1.74:3000'
 		reconnection: true,
 		reconnectionDelay: 1000,
 		reconnectionDelayMax : 5000,
 		reconnectionAttempts: Infinity
-	} );
+	} ); */
 
 	socket.on( 'connect', function () {
 		console.log( 'connected to server' );
@@ -583,13 +592,14 @@ connect = function(){
 		vm.roomList[room.name] = room; //important
 		var oldRoom = vm.currentRoom;
 		vm.currentRoom = room.name;
-		vm.currentRoomType = roomType[room.type];
+		//vm.currentRoomType = roomType[room.type];
 		vm.toggleActiveRooms(oldRoom);
 		vm.allGames = updateGames();
 		focusCursor('msgForm',1);
 	});
 
 	socket.on('chat_message', function(msg){
+		var previousRoomType = vm.currentRoomType;
 		if(msg.room == null){
 			msg.room = defaultRoom;
 			vm.currentRoomType = roomType.chat;
@@ -656,6 +666,7 @@ connect = function(){
 			} 
 		}
 		alignMessageToBottom();
+		vm.currentRoomType = previousRoomType;
 	});
 
 	socket.on('left_room', function(room){
@@ -714,16 +725,19 @@ connect = function(){
 	socket.on('drawing', onDrawingEvent);
 	socket.on('track_cursor', onTrackCursor);
 	socket.on('clear_canvas', clearCanvas);
-	socket.on('game_ready', readyGame);
+	//socket.on('game_ready', readyGame);
+
 	socket.on('start_game', function(msg){
-		startGame(msg.room,parseInt(msg.msg.boardSize));
+		$("#ticTacControls").hide();
+		startGame(msg.room,parseInt(msg.msg.boardSize),parseInt(msg.msg.winLength));
 	});
 
 	socket.on('tac_click', function(click){
 		boxClicked(click);
 	});
 	socket.on('game_won', function(msg){
-		console.log("game won by:" + winner);
+		$("#ticTacControls").show();
+		console.log("game won by:" + msg.msg);
 	})
 
 	join = function(inputAr, type){
@@ -1037,25 +1051,34 @@ togglePasswordField = function(){
 	  })
 }
 
+clickedRadio = function(field){
+	$('#'+field).prop("checked", function(i, origValue){
+		return !origValue;
+	  })
+}
+
 processCreateGame = function(){
 	var pg = $('#choosePaintGame').prop("checked");
 	var tt = $('#chooseTicTacGame').prop("checked");
-	var roomName = $('#chooseGameName')[0].value;
+	var roomNamePre = $('#chooseGameName')[0].value;
+	var roomName = roomNamePre.split(' ').join('_');
 	var gamePass = $('#chooseGamePass')[0].value;
 	var gType;
 	if(pg){
 		gType = gameType.paint;
-	}else{
+	}else if(tt){
 		gType = gameType.tictac;
 	}
-	if(gamePass == ''){
-		gamePass = null;
+	if(gType){
+		if(gamePass == ''){
+			gamePass = null;
+		}
+		if(roomName==''){
+			roomName = generateGameRoomName();
+		}
+		$('#gameCreationPopup').toggle();
+		socket.emit('join_room', roomName, vm.currentRoom, roomType.game, gamePass, gType);
 	}
-	if(roomName==''){
-		roomName = generateGameRoomName();
-	}
-	$('#gameCreationPopup').toggle();
-	socket.emit('join_room', roomName, vm.currentRoom, roomType.game, gamePass, gType);
 }
 
 roomExists= function(id){
@@ -1079,10 +1102,17 @@ readyGame = function(){
 	$('#' +vm.currentRoom+ '_game').show();
 }
 
-startGame = function(room, size){
-	makeBoard(room, size);
+startGame = function(room, size, winLength){
+	makeBoard(room, size, winLength);
 	$('#' +room+ '_game').show();
 	$('#' +room+ '_tictac').show();
+}
+
+startGameClick = function(){
+	var params = new Object();
+	params.boardSize = vm.boardSize;
+	params.winLength = vm.winLength;
+	socket.emit('start_game', newMsg(socket.id, socket.username, vm.currentRoom, params));
 }
 
 pickPaintTool = function(type){
@@ -1101,6 +1131,10 @@ pickPaintTool = function(type){
 clearCanvasPre = function(){
 	clearCanvas();
 	socket.emit('clear_canvas',newMsg(socket.id, socket.username, vm.currentRoom));
+}
+
+setPlayerState = function(state){
+	socket.emit('user_status_update', newMsg(socket.id, socket.username, vm.currentRoom, state));
 }
 
 alignMessageToBottom = function(){
@@ -1214,11 +1248,11 @@ createEmojis = function (){
 insertEmo = function(emo){ 
 	var newmsg = vm.formMessage.substr(0, vm.msgCursorIndex);
 	var newMsg2 = vm.formMessage.substr(vm.msgCursorIndex);
-	
 	vm.formMessage = newmsg + emo + newMsg2;
 	vm.msgCursorIndex = vm.msgCursorIndex + emo.length;
 	focusCursor('msgForm',vm.msgCursorIndex);
 }
+
 $(document).ready(function() {
 	createEmojis();
 	var nick = JSON.parse(localStorage.getItem('nickname'));

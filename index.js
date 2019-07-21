@@ -79,14 +79,10 @@ io.on('connection', function(socket){
 		if(socket.adapter.rooms[msg.room].type == roomType.game){
 			if(msg.msg in playerStatus){
 				socket.adapter.rooms[msg.room].playerStatus[msg.id] = msg.msg;
-				console.log("Status updated");
-				console.log(socket.adapter.rooms[msg.room].playerStatus[msg.id]);
 				var statusN = '';
 				if(Object.keys(socket.adapter.rooms[msg.room].playerStatus).length >= minUsersPerGameRoom){
 					var playersReady = true;
 					for(var player in socket.adapter.rooms[msg.room].playerStatus){
-						console.log(playerStatus.ready)
-						console.log(socket.adapter.rooms[msg.room].playerStatus[player]);
 						if(socket.adapter.rooms[msg.room].playerStatus[player] != playerStatus.ready){
 							playersReady = false;
 							console.log('all players not ready');
@@ -108,6 +104,8 @@ io.on('connection', function(socket){
 					socket.adapter.rooms[msg.room].roomStatus = statusN;
 					io.emit('users_rooms_list', userList, socket.adapter.rooms); //will send updated room statuses
 				}
+				var message = msg.username + " is now " + msg.msg + "!";
+				io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
 			}
 		}
 	});
@@ -151,7 +149,7 @@ io.on('connection', function(socket){
 				activeGamesData[msg.room] = ticTacGame;
 				console.log(activeGamesData);
 				io.to(msg.room).emit('start_game', msg); 
-				message = "It is " + usersObj[usersArray[0]].name + "'s turn.";
+				message = "It is " + usersObj[usersArray[0]].name + "'s turn ( " + usersObj[usersArray[0]].icon + " )";
 				io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
 			}else{
 				io.to(msg.room).emit('start_game', msg); 
@@ -166,6 +164,7 @@ io.on('connection', function(socket){
 
 	socket.on('tic_click', function(msg){
 		var ticTacGame = activeGamesData[msg.room];
+		console.log(ticTacGame);
 		if(ticTacGame.game.turn == ticTacGame.users[msg.userId].turn){ //has to be your turn
 			if(ticTacGame.game.matrix[msg.y][msg.x] == ''){ //has to be empty square
 				ticTacGame.game.matrix[msg.y][msg.x] = ticTacGame.users[msg.userId].icon; //fill square
@@ -176,14 +175,21 @@ io.on('connection', function(socket){
 				clickAction.x = msg.x;
 				clickAction.y = msg.y;
 				clickAction.room = msg.room;
-				
 				if(winner == ''){
 					io.to(msg.room).emit('tac_click', clickAction);
 					ticTacGame.game.turn++;
 					if(ticTacGame.game.turn > ticTacGame.game.turnMax){
 						ticTacGame.game.turn = 0;
 					}
-					message = "It is " + ticTacGame.users[msg.userId].name + "'s turn.";
+					var usersTurnName = '';
+					var clickIcon = '';
+					for(var user in ticTacGame.users){
+						if(ticTacGame.users[user].turn ==ticTacGame.game.turn){
+							usersTurnName = ticTacGame.users[user].name;
+							clickIcon = ticTacGame.users[user].icon;
+						}
+					}
+					message = "It is " + usersTurnName + "'s turn ( " + clickIcon + " )";
 					io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
 				}else{
 					io.to(msg.room).emit('tac_click', clickAction);
@@ -198,9 +204,6 @@ io.on('connection', function(socket){
 				}
 			}
 		}
-/* 		for(var i = 0; i < ticTacGame.game.matrix.length; i++){
-			console.log(ticTacGame.game.matrix[i]);
-		} */
 	});
 
 	socket.on('clear_canvas', function(msg){
@@ -340,13 +343,20 @@ io.on('connection', function(socket){
 							io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
 						}
 					}else{ //it's public
-						socket.join(room);
-						console.log("public " +type+ " room joined");
-						var message = getName(socket) + " joined " + room;
-						io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
-						io.to(socket.id).emit('joined_room', thisRoom);
-						if(socket.adapter.rooms[room].type == roomType.game && socket.adapter.rooms[room].gameType == gameType.paint ){
-							socket.to(room).emit('get_canvas', newMsg(socket.id, socket.username,room))
+						if(socket.adapter.rooms[room].type == roomType.game && 
+							socket.adapter.rooms[room].gameType == gameType.tictac && 
+							socket.adapter.rooms[room].roomStatus == gameStatus.playing ){ //it's currently active
+								var message = "Cannot join room while game is in session."
+								io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,room,message));
+						}else{
+							socket.join(room);
+							console.log("public " +type+ " room joined");
+							var message = getName(socket) + " joined " + room;
+							io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
+							io.to(socket.id).emit('joined_room', thisRoom);
+							if(socket.adapter.rooms[room].type == roomType.game && socket.adapter.rooms[room].gameType == gameType.paint ){
+								socket.to(room).emit('get_canvas', newMsg(socket.id, socket.username,room))
+							}
 						}
 					}
 				}else{

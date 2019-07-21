@@ -17,10 +17,10 @@ clickedBox = function(obj){
 	socket.emit('tic_click',clickAction);
 }
 
-makeBoard = function(room, size){
+makeBoard = function(room, size, winLength){
 	$('#' +room+ '_tictac').empty();
 	var tableId = room +"_tictacTable";
-	var tableTic = "<table id='"+ tableId +"'><table>";
+	var tableTic = "<p>TicTacToe : First to " +winLength + " wins!</p><table id='"+ tableId +"'><table>";
 	$('#' +room+ '_tictac').append(tableTic);
 	for(var i = 0; i < size; i++){
 		var trId = room + "_tic_" + i;

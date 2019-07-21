@@ -44,8 +44,8 @@
 			></message-area>
 			<div id="gameCreationPopup">
 				<p>Game Type:</p>
-				<input type="radio" name="gameType" id="choosePaintGame">Paint </br>
-				<input type="radio" name="gameType" id="chooseTicTacGame">TicTac </br>
+				<input type="radio" name="gameType" id="choosePaintGame"><span onclick="clickedRadio('choosePaintGame')">Paint</span></br>
+				<input type="radio" name="gameType" id="chooseTicTacGame"><span onclick="clickedRadio('chooseTicTacGame')">TicTac</span></br>
 				<input type="text" id="chooseGameName" placeholder="Game Name (Optional)"></br>
 				<input type="text" id="chooseGamePass" placeholder="Password" disabled><input type="checkbox" id="chooseGamePriv" onclick="togglePasswordField()" unchecked> Private?
 				<button class="tableButton" onclick="processCreateGame()">Create</button>
@@ -122,6 +122,22 @@
 					<p id="cursorCoords"></p>
 				</div>
 			</div>
+			<div id="ticTacControls">
+				<button id="readyButton" onclick="setPlayerState('ready')">Ready</button>
+				<button id="notReadyButton" onclick="setPlayerState('idle')">Not Ready</button>
+				<div id="boardSizeInput">
+					<p>Board Size:</p>
+					<input type="number" min="3" max="12" id="boardSizeBar" value="3" v-model="boardSize" style="width:70%;">
+				</div>		
+				<div id="winLengthInput">
+					<p>Win Length:</p>
+					<input type="number" min="2" max="12" id="startPointBar" value="3" v-model="winLength" style="width:70%;">
+				</div>					
+				<button id="startGameButton" onclick="startGameClick()">Start Game</button>
+				<div>
+					<p id="cursorCoords"></p>
+				</div>
+			</div>
 		</div>
 		<div id="messageform">
 			<div>
@@ -152,6 +168,8 @@
 				<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>
 				<span> /joingame : Join a game room by entering a room name after the command.</span><br/>
 				<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>
+				<span> /status : Change status for your user in a game room: (use 'ready' to unlock game)</span><br/>
+				<span> /start {boardsize} {winlength} : starts a tictactoe game </span><br/>
 				<span> /leave : Leave any room by entering the room name.</span><br/>
 				<span> /dm : Start a direct message room by entering the username.</span><br/>
 				<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>
