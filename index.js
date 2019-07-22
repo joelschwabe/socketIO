@@ -28,14 +28,15 @@ const gameStatus = {
 		finished: 'finished'
 	};		
 const gameType = {
-		tictac: 'tictac',
-		paint: 'paint'
+		battleship: 'battleship',
+		paint: 'paint',
+		tictac: 'tictac'
 	};		
 const playerStatus = {
 		idle: 'idle',
 		ready: 'ready',
 		playing: 'playing'
-	};		
+	};
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
 // Express Middleware for serving static files
@@ -51,7 +52,6 @@ var roomPassword = {}; //{roomName:'password'}
 var activeGamesData = {};
 
 io.on('connection', function(socket){
-
 	console.log('a user connected to default with socket:'+socket.id);
 
 	socket.on('reconnect', function(socket){
@@ -73,10 +73,11 @@ io.on('connection', function(socket){
 	socket.on('drawing', function(msg){
 		io.to(msg.room).emit('drawing', msg);
 	});
+
 	socket.on('user_status_update', function(msg){
 		if(!socket.adapter.rooms[msg.room]){return}
 		console.log("user status update");
-		if(socket.adapter.rooms[msg.room].type == roomType.game){
+		if(socket.adapter.rooms[msg.room].type == roomType.game){ //status updates only apply to games
 			if(msg.msg in playerStatus){
 				socket.adapter.rooms[msg.room].playerStatus[msg.id] = msg.msg;
 				var statusN = '';
@@ -118,39 +119,9 @@ io.on('connection', function(socket){
 			io.emit('users_rooms_list', userList, socket.adapter.rooms); 
 			io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
 			if(socket.adapter.rooms[msg.room].gameType == gameType.tictac){
-				var iconArray = ['X','O','Z','H','B','S','K','N','M'];
-				var gameData = new Object();
-				gameData.matrix = [];
-				gameData.winLength = parseInt(msg.msg.winLength);
-				gameData.boardSize = parseInt(msg.msg.boardSize);
-				for(var i =0; i < gameData.boardSize; i++){
-					gameData.matrix.push([]);
-					for(var j =0; j < gameData.boardSize; j++){
-						gameData.matrix[i].push('');
-					}
-				}
-				var usersArray = Object.keys(socket.adapter.rooms[msg.room].sockets);
-				var usersObj = new Object();
-				for(var i=0;i < usersArray.length; i++){
-					usersObj[usersArray[i]] = new Object();
-					usersObj[usersArray[i]].score = 0;
-					usersObj[usersArray[i]].icon = iconArray[i];
-					usersObj[usersArray[i]].turn = i;
-					for(var k =0; k < userList.length; k++){
-						console.log(userList[k].id + " | " + usersArray[i] );
-						if(userList[k].id==usersArray[i]){
-							usersObj[usersArray[i]].name = userList[k].username;
-						}
-					}
-				}
-				gameData.turn = 0;
-				gameData.turnMax = usersArray.length-1; //zero index
-				var ticTacGame = newGame(msg.room,socket.adapter.rooms[msg.room].gameType, usersObj, gameData );
-				activeGamesData[msg.room] = ticTacGame;
-				console.log(activeGamesData);
-				io.to(msg.room).emit('start_game', msg); 
-				message = "It is " + usersObj[usersArray[0]].name + "'s turn ( " + usersObj[usersArray[0]].icon + " )";
-				io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+				setupTicTac(msg);
+			}else if(socket.adapter.rooms[msg.room].gameType == gameType.battleship){
+				setupBattleship(msg);
 			}else{
 				io.to(msg.room).emit('start_game', msg); 
 			}
@@ -162,6 +133,47 @@ io.on('connection', function(socket){
 		}
 	});
 
+	setupTicTac = function(msg){
+		var iconArray = ['X','O','Z','H','B','S'];
+		var gameData = new Object();
+		gameData.matrix = [];
+		gameData.winLength = parseInt(msg.msg.winLength);
+		gameData.boardSize = parseInt(msg.msg.boardSize);
+		gameData.ticCount = 0;
+		for(var i =0; i < gameData.boardSize; i++){
+			gameData.matrix.push([]);
+			for(var j =0; j < gameData.boardSize; j++){
+				gameData.matrix[i].push('');
+			}
+		}
+		var usersArray = Object.keys(socket.adapter.rooms[msg.room].sockets);
+		var usersObj = new Object();
+		for(var i=0;i < usersArray.length; i++){
+			usersObj[usersArray[i]] = new Object();
+			usersObj[usersArray[i]].score = 0;
+			usersObj[usersArray[i]].icon = iconArray[i];
+			usersObj[usersArray[i]].turn = i;
+			for(var k =0; k < userList.length; k++){
+				console.log(userList[k].id + " | " + usersArray[i] );
+				if(userList[k].id==usersArray[i]){
+					usersObj[usersArray[i]].name = userList[k].username;
+				}
+			}
+		}
+		gameData.turn = 0;
+		gameData.turnMax = usersArray.length-1; //zero index
+		var ticTacGame = newGame(msg.room,socket.adapter.rooms[msg.room].gameType, usersObj, gameData );
+		activeGamesData[msg.room] = ticTacGame;
+		console.log(activeGamesData);
+		io.to(msg.room).emit('start_game', msg); 
+		message = "It is " + usersObj[usersArray[0]].name + "'s turn ( " + usersObj[usersArray[0]].icon + " )";
+		io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+	}
+
+	setupBattleship = function(msg){
+		console.log("TODO: setupbattleship");
+	};
+
 	socket.on('tic_click', function(msg){
 		var ticTacGame = activeGamesData[msg.room];
 		console.log(ticTacGame);
@@ -169,13 +181,13 @@ io.on('connection', function(socket){
 			if(ticTacGame.game.matrix[msg.y][msg.x] == ''){ //has to be empty square
 				ticTacGame.game.matrix[msg.y][msg.x] = ticTacGame.users[msg.userId].icon; //fill square
 				var winner = tictac.gameOver(ticTacGame.game.matrix,msg.y,msg.x,ticTacGame.game.winLength-1); //check results
-				console.log("Winner:" + winner);
+				console.log("Winner:" + winner.icon);
 				var clickAction = new Object();
 				clickAction.icon = ticTacGame.users[msg.userId].icon;
 				clickAction.x = msg.x;
 				clickAction.y = msg.y;
 				clickAction.room = msg.room;
-				if(winner == ''){
+				if(winner.icon == ''){
 					io.to(msg.room).emit('tac_click', clickAction);
 					ticTacGame.game.turn++;
 					if(ticTacGame.game.turn > ticTacGame.game.turnMax){
@@ -189,29 +201,50 @@ io.on('connection', function(socket){
 							clickIcon = ticTacGame.users[user].icon;
 						}
 					}
-					message = "It is " + usersTurnName + "'s turn ( " + clickIcon + " )";
-					io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+					ticTacGame.game.ticCount++;
+					if(ticTacGame.game.ticCount == (ticTacGame.game.boardSize * ticTacGame.game.boardSize)){
+						ticTacGame.game.turn = -1;
+						winner.name = null; 
+						gameComplete(msg, winner);
+					}else{
+						message = "It is " + usersTurnName + "'s turn ( " + clickIcon + " )";
+						io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+					}
 				}else{
 					io.to(msg.room).emit('tac_click', clickAction);
-					socket.adapter.rooms[msg.room].roomStatus = gameStatus.finished;
-					io.emit('users_rooms_list', userList, socket.adapter.rooms); 
+					winner.name =  ticTacGame.users[msg.userId].name;
 					ticTacGame.game.turn = -1;
-					var winUser =  ticTacGame.users[msg.userId].name;
-					var message = winUser;
-					io.to(msg.room).emit('game_won', newMsg(serverName, serverName,msg.room,message));
-					message = winUser + " has won the game!";
-					io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+					gameComplete(msg,winner);
 				}
 			}
 		}
 	});
 
+	gameComplete = function(msg, winner){
+		var message;
+		if(!winner.name){
+			winner.name = serverName;
+			message = "Tie Game!"
+		}else{
+			message = winner.name + " has won the game!";
+		}
+		for(var player in socket.adapter.rooms[msg.room].playerStatus){
+			socket.adapter.rooms[msg.room].playerStatus[player] == playerStatus.idle;
+		}
+		socket.adapter.rooms[msg.room].roomStatus = gameStatus.finished;
+		io.emit('users_rooms_list', userList, socket.adapter.rooms);
+		io.to(msg.room).emit('game_won', newMsg(serverName, serverName,msg.room,winner));
+		io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+	}
+
 	socket.on('clear_canvas', function(msg){
 		io.to(msg.room).emit('clear_canvas', msg);
 	});
+
 	socket.on('track_cursor', function(msg){
 		io.to(msg.room).emit('track_cursor', msg);
 	});
+
 	socket.on('register_secret', function(msg){
 		var message = "Secret submitted";
 		var doneSecret = false;
@@ -230,6 +263,7 @@ io.on('connection', function(socket){
 		}
 		io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,msg.room,message))
 	});
+
 	socket.on('guess_secret', function(msg){
 		var message = 'No secret!';
 
@@ -289,11 +323,11 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('chat_message', function(msg){
-		console.log('socketId: ' + msg.id);
+/* 		console.log('socketId: ' + msg.id);
 		console.log(' -userId: ' + msg.userId);
 		console.log('   -username: ' + msg.username);
 		console.log('    -room: ' + msg.room);
-		console.log('     -message: ' + msg.msg);
+		console.log('     -message: ' + msg.msg); */
 		if(msg.room != serverRoom){
 			io.to(msg.room).emit('chat_message', msg);
 		}
@@ -311,7 +345,6 @@ io.on('connection', function(socket){
 			return
 		};
 		var maxUsersPerRoom;
-		var gotCanvas = false;
 		if(type == roomType.game){
 			maxUsersPerRoom = maxUsersPerGameRoom;
 		}else if(type == roomType.chat){
@@ -408,10 +441,7 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('leave_room', function(room){
-		if(room == defaultRoom){
-			var message = 'Cannot leave ' + room;
-			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,room,message));
-		}else if(room == serverRoom){
+		if(room == defaultRoom || room == serverRoom){
 			var message = 'Cannot leave ' + room;
 			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,room,message));
 		}else{
@@ -568,6 +598,7 @@ getName = function(socket){
 	}
 }
 
+//init
 http.listen(port, function(){
 	console.log('listening on *:'+port);
 });

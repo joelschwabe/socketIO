@@ -155,6 +155,7 @@
 	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
 	<script src="/js/paint.js" type="application/javascript"></script>
 	<script src="/js/tictac.js" type="application/javascript"></script>
+	<script src="/js/emojis.js" type="application/javascript"></script>
 	<script src="/js/main.js" type="application/javascript"></script>
 
 	<template id="loadingScreen">
@@ -165,14 +166,14 @@
 			<div>
 				<span>Help commands:</span><br/>
 				<span> /help : Displays this list</span><br/>
-				<span> /joinchat : Join a chatroom by entering a room name after the command.</span><br/>
-				<span> /joingame : Join a game room by entering a room name after the command.</span><br/>
+				<span> /joinchat {roomName} {password}: Join a chatroom by entering a room name after the command.</span><br/>
+				<span> /joingame {roomName} {password}: Join a game room by entering a room name after the command.</span><br/>
 				<span> **Join commands can have an optional password parameter to make a private room. If a room does not exist it will be created.**</span><br/>
-				<span> /status : Change status for your user in a game room: (use 'ready' to unlock game)</span><br/>
+				<span> /status {statusType}: Change status for your user in a game room: (use 'ready' to unlock game)</span><br/>
 				<span> /start {boardsize} {winlength} : starts a tictactoe game </span><br/>
-				<span> /leave : Leave any room by entering the room name.</span><br/>
-				<span> /dm : Start a direct message room by entering the username.</span><br/>
-				<span> /name : Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>
+				<span> /leave {roomName}: Leave any room by entering the room name.</span><br/>
+				<span> /dm {userName}: Start a direct message room by entering the username.</span><br/>
+				<span> /name {newName} {iconUrl}: Change your nickname to anything you want (If an existing name is present, new nickname will have counters appended).</span><br/>
 				<span> **A nickname must have no spaces. Adding a valid image url as a second parameter will result in that image being used as your user icon.**</span><br/>
 			</div>
 		</li>

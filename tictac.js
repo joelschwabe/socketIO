@@ -1,25 +1,38 @@
 module.exports = {
     gameOver : function(matrix, i, j, winDelta){
-        var winner = '';
+        var winner = new Object();
+        winner.icon = '';
         var bsize = matrix.length;
-        if(turboLogic(i,j-winDelta,'','+', winDelta, bsize, matrix)){ 
-            winner = matrix[i][j];
+        var northSouth = turboLogic(i,j-winDelta,'','+', winDelta, bsize, matrix);
+        var eastWest = turboLogic(i-winDelta,j,'+','', winDelta, bsize, matrix);
+        var norWesSoEast = turboLogic(i-winDelta,j+winDelta,'+','-', winDelta, bsize, matrix);
+        var norEaSoWest = turboLogic(i-winDelta,j-winDelta,'+','+', winDelta, bsize, matrix);
+
+        if(northSouth.length > 0){
+            winner.icon = matrix[i][j];
+            winner.winLine = northSouth;
         }	
-        if(turboLogic(i-winDelta,j,'+','', winDelta, bsize, matrix)){ 
-            winner = matrix[i][j];
+        if(eastWest.length > 0){
+            winner.icon = matrix[i][j];
+            winner.winLine = eastWest;
         }	
-        if(turboLogic(i-winDelta,j+winDelta,'+','-', winDelta, bsize, matrix)){ 
-            winner = matrix[i][j];
-        }
-        if(turboLogic(i-winDelta,j-winDelta,'+','+', winDelta, bsize, matrix)){ 
-            winner = matrix[i][j];
-        } 
+        if(norWesSoEast.length > 0){
+            winner.icon = matrix[i][j];
+            winner.winLine = norWesSoEast;
+        }	
+        if(norEaSoWest.length > 0){
+            winner.icon = matrix[i][j];
+            winner.winLine = norEaSoWest;
+        }	
         return winner;
     }
 };
 
 turboLogic = function( i, j, op1, op2, winDelta, bsize, matrix){
     var count = 0;
+    var winLine = [];
+    var realWin = [];
+    var won = false;
     var op1x, op1y, op2x, op2y;
     for(var k = 0; k < (winDelta * 2); k++){
         if(op1=='+'){
@@ -43,18 +56,24 @@ turboLogic = function( i, j, op1, op2, winDelta, bsize, matrix){
             op2y = j;
         }
         if(op1x >= 0 && op1y >= 0 && op2x >=0  && op2y >= 0 && op1x < bsize && op1y < bsize && op2x < bsize  && op2y < bsize ){
-/*          console.log(op1x + " " + op1y + " " +op2x+ " " +op2y+ " ")
-            console.log(matrix[op1x][op1y]);
-            console.log(matrix[op2x][op2y]); */
             if(matrix[op1x][op1y] == matrix[op2x][op2y]){
                 count++;
+                winLine.push([op1x,op1y]);
             }else{
+                winLine = [];
                 count = 0;
             }
         }
         if(count == winDelta){
-            return true;
+            winLine.push([op2x,op2y]);
+            realWin = Array.from(winLine);
+            var won = true;
         }
     }
-    return false;
+    if(won){
+        return realWin; 
+    }
+    else{
+        return []; 
+    }
 }
