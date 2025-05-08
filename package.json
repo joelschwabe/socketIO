@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "description": "my first socket.io app",
   "dependencies": {
-    "express": "^4.17.1",
-    "socket.io": "^2.2.0"
+    "comfy-ui-client": "^0.1.2",
+    "express": "^4.15.2",
+    "socket.io": "^2.5.0"
   }
 }

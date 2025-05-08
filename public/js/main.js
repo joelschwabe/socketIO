@@ -113,7 +113,7 @@ Vue.component('message-area', {
 			return (this.room.gameType==gameType.paint);
 		},
 		hasGameDiv : function(){
-			return (this.room.gameType==gameType.tictac);
+			return (this.room.gameType==gameType.tictac||this.room.gameType==gameType.imggen);
 		},
 		isServer : function(){
 			return (this.room.type==roomType.server);
@@ -164,7 +164,8 @@ const playerStatus = {
 };			
 const gameType = {
 	tictac: 'tictac',
-	paint: 'paint'
+	paint: 'paint',
+	imggen: 'imggen'
 };					
 const drawType = {
 	brush: 'brush',
@@ -285,12 +286,23 @@ var vm = new Vue({
 			if(this.currentGameType == gameType.paint){
 				$('#canvasControls').show();
 				$('#ticTacControls').hide();
+				$('#gameControls').hide();
+				$('#imgGenControls').hide();
 			}else if(this.currentGameType == gameType.tictac){
 				$('#ticTacControls').show();
+				$('#gameControls').show();
+				$('#canvasControls').hide();
+				$('#imgGenControls').hide();
+			}else if(this.currentGameType == gameType.imggen){
+				$('#imgGenControls').show();
+				$('#gameControls').show();
+				$('#ticTacControls').hide();
 				$('#canvasControls').hide();
 			}else{
 				$('#canvasControls').hide();
 				$('#ticTacControls').hide();
+				$('#imgGenControls').hide();
+				$('#gameControls').hide();
 			}
 			if(this.currentRoomType == roomType.server){
 				$('#msgForm').prop('disabled', true);
@@ -514,15 +526,45 @@ connect = function(){
 	socket.on('track_cursor', onTrackCursor);
 	socket.on('clear_canvas', clearCanvas);
 
-	socket.on('start_game', function(msg){
+	socket.on('start_tictac', function(msg){
 		$("#ticTacControls").hide();
-		startGame(msg.room,parseInt(msg.msg.boardSize),parseInt(msg.msg.winLength));
+		startTictac(msg.room,parseInt(msg.msg.boardSize),parseInt(msg.msg.winLength));
+	});
+
+	socket.on('start_imggen', function(msg){
+		$("#imgGenControls").hide();
+		startImggen(msg.room);
+	});
+
+	socket.on('start_prompting', function(msg){
+		displayPrompt(msg.room, msg.promptWords, msg.promptTheme);
 	});
 
 	socket.on('tac_click', function(click){
 		boxClicked(click);
 	});
 
+	socket.on('countdownTickVote', function(count){
+		setCountdownVote(count);
+	});
+	socket.on('countdownTickPrompt', function(count){
+		setCountdownPrompt(count);
+	});
+
+	socket.on('roundFinished', function(msg){
+		prompt = $('#promptForm')[0].value;
+		displayRoundFinished(msg.room);
+		socket.emit('submit_prompt',newMsg(socket.id, socket.username, vm.currentRoom,prompt));
+	});
+
+	socket.on('voteSetup', function(msg){
+		displayImages(msg.room, msg.image1, msg.image2, msg.promptTheme, msg.promptWords);
+	});
+
+	socket.on('voteFinished', function(msg){
+		displayRoundWinner(msg.room, msg.winner);
+	});
+	
 	socket.on('game_won', function(msg){
 		$("#ticTacControls").show();
 		console.log("game won by:" + msg.msg.name);
@@ -534,6 +576,20 @@ connect = function(){
 			}
 		}
 	})
+
+	voteA = function(){
+		socket.emit('vote',newMsg(socket.id, socket.username, vm.currentRoom,0));
+	}
+
+	voteB = function(){
+		socket.emit('vote',newMsg(socket.id, socket.username, vm.currentRoom,1));
+	}
+
+	submitPrompt= function(){
+		prompt = $('#promptForm')[0].value;
+		displayRoundFinished(vm.currentRoom);
+		socket.emit('submit_prompt',newMsg(socket.id, socket.username, vm.currentRoom,prompt));
+	}
 
 	join = function(inputAr, type){
 		if(inputAr.length < 2){
@@ -640,7 +696,7 @@ connect = function(){
 			}
 			socket.emit('guess_secret', newMsg(socket.id, socket.username, vm.currentRoom, inputvalArgs[1]));
 
-		}else if(inputvalArgs[0]=="start"){ //start 7 4 (start, 7x7 board, 4 to win)
+		}else if(inputvalArgs[0]=="starttic"){ //start 7 4 (start, 7x7 board, 4 to win)
 			if(vm.currentRoomType != roomType.game){
 				invalidCommand();
 				return;
@@ -652,7 +708,7 @@ connect = function(){
 			var params = new Object();
 			params.boardSize = inputvalArgs[1];
 			params.winLength = inputvalArgs[2];
-			socket.emit('start_game', newMsg(socket.id, socket.username, vm.currentRoom, params));
+			socket.emit('start_tictac', newMsg(socket.id, socket.username, vm.currentRoom, params));
 
 		}else if(inputvalArgs[0]=="status"){
 			if(inputvalArgs.length == 2 ){
@@ -722,10 +778,6 @@ appendVideo = function(msg){
 	);
 }
 
-appendAudio = function (msg){
-	//todo
-}
-
 checkIfImage = function (url){
 	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
 			var pathNameExt = url.pathname;
@@ -750,19 +802,6 @@ checkIfImage = function (url){
 	return false;
 }
 
-checkIfAudio = function (url){
-/* 	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
-		var hostNameExt = url.hostname;
-		if(hostNameExt){
-			if(hostNameExt == "bandcamp.com"){
-
-			}else{
-				return false;
-			}
-		}
-	} */
-	return false;
-}
 
 checkIfVideo = function (url){
 	if(url.protocol.indexOf('http:') || url.protocol.indexOf('https:')){
@@ -865,14 +904,18 @@ clickedRadio = function(field){
 processCreateGame = function(){
 	var pg = $('#choosePaintGame').prop("checked");
 	var tt = $('#chooseTicTacGame').prop("checked");
+	var ig = $('#chooseImggenGame').prop("checked");
 	var roomNamePre = $('#chooseGameName')[0].value;
 	var roomName = roomNamePre.split(' ').join('_');
 	var gamePass = $('#chooseGamePass')[0].value;
 	var gType;
+	console.log("processCreateGame gtype:" + gType);
 	if(pg){
 		gType = gameType.paint;
 	}else if(tt){
 		gType = gameType.tictac;
+	}else if(ig){
+		gType = gameType.imggen;
 	}
 	if(gType){
 		if(gamePass == ''){
@@ -884,6 +927,10 @@ processCreateGame = function(){
 		$('#gameCreationPopup').toggle();
 		socket.emit('join_room', roomName, vm.currentRoom, roomType.game, gamePass, gType);
 	}
+}
+
+closeGameCreationPopup = function(){
+	$('#gameCreationPopup').toggle();
 }
 
 roomExists= function(id){
@@ -907,13 +954,23 @@ readyGame = function(){
 	$('#' +vm.currentRoom+ '_game').show();
 }
 
-startGame = function(room, size, winLength){
+startTictac = function(room, size, winLength){
 	makeBoard(room, size, winLength);
 	$('#' +room+ '_game').show();
 	$('#' +room+ '_tictac').show();
 }
 
-startGameClick = function(){
+startImggen = function(room){
+	makeImgGen(room);
+	$('#' +room+ '_game').show();
+	$('#' +room+ '_imggen').show();
+}
+
+startSlopping = function(){
+	socket.emit('slopped_round_prompt', newMsg(socket.id, socket.username, vm.currentRoom));
+}
+
+startGame = function(){
 	var params = new Object();
 	params.boardSize = vm.boardSize;
 	params.winLength = vm.winLength;
@@ -943,13 +1000,17 @@ clearCanvasPre = function(){
 }
 
 alignMessageToBottom = function(){
-	var scrollm;
 	if(vm.currentRoomType == roomType.game){
-		scrollm = document.getElementById(vm.currentRoom+'_messages');
+		var roomDiv = document.getElementById(vm.currentRoom+'_messages');
+		if(roomDiv!=null){
+			roomDiv.scrollTo(0,roomDiv.scrollHeight);
+		}
 	}else{
-		scrollm = document.getElementById('messages');	
+		var roomDiv = document.getElementById('messages');
+		if(roomDiv!=null){
+			roomDiv.scrollTo(0,roomDiv.scrollHeight);
+		}
 	}
-	scrollm.scrollTo(0,scrollm.scrollHeight);
 }
 
 getName = function(msg){

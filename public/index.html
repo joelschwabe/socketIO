@@ -27,7 +27,7 @@
 					<th>Name</th>
 					<th>Type</th>
 					<th>Status</th>
-					<th><button class="tableButton" onclick="showCreateGamePopup()">Create Game</button></th>
+					<th><button class="tableButton" onclick="showCreateGamePopup()">Create New Game</button></th>
 				</tr>
 				<tr is="server-row" 
 					v-for="game in allGames" 
@@ -46,9 +46,11 @@
 				<p>Game Type:</p>
 				<input type="radio" name="gameType" id="choosePaintGame"><span onclick="clickedRadio('choosePaintGame')">Paint</span></br>
 				<input type="radio" name="gameType" id="chooseTicTacGame"><span onclick="clickedRadio('chooseTicTacGame')">TicTac</span></br>
+				<input type="radio" name="gameType" id="chooseImggenGame"><span onclick="clickedRadio('chooseImggenGame')">Imggen</span></br>
 				<input type="text" id="chooseGameName" placeholder="Game Name (Optional)"></br>
 				<input type="text" id="chooseGamePass" placeholder="Password" disabled><input type="checkbox" id="chooseGamePriv" onclick="togglePasswordField()" unchecked> Private?
 				<button class="tableButton" onclick="processCreateGame()">Create</button>
+				<button class="tableButton" onclick="closeGameCreationPopup()">Close</button>
 			</div>
 		</div>
 		<div class="sideBar">
@@ -123,8 +125,6 @@
 				</div>
 			</div>
 			<div id="ticTacControls">
-				<button id="readyButton" onclick="setPlayerState('ready')">Ready</button>
-				<button id="notReadyButton" onclick="setPlayerState('idle')">Not Ready</button>
 				<div id="boardSizeInput">
 					<p>Board Size:</p>
 					<input type="number" min="3" max="12" id="boardSizeBar" value="3" v-model="boardSize" style="width:70%;">
@@ -133,7 +133,14 @@
 					<p>Win Length:</p>
 					<input type="number" min="2" max="12" id="startPointBar" value="3" v-model="winLength" style="width:70%;">
 				</div>					
-				<button id="startGameButton" onclick="startGameClick()">Start Game</button>
+			</div>
+			<div id="imgGenControls">
+				<p>Imggen Test</p>
+			</div>
+			<div id="gameControls">
+				<button id="readyButton" onclick="setPlayerState('ready')">Ready</button>
+				<button id="notReadyButton" onclick="setPlayerState('idle')">Not Ready</button>				
+				<button id="startGameButton" onclick="startGame()">Start Game</button>
 				<div>
 					<p id="cursorCoords"></p>
 				</div>
@@ -155,6 +162,7 @@
 	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
 	<script src="/js/paint.js" type="application/javascript"></script>
 	<script src="/js/tictac.js" type="application/javascript"></script>
+	<script src="/js/imggen.js" type="application/javascript"></script>
 	<script src="/js/emojis.js" type="application/javascript"></script>
 	<script src="/js/main.js" type="application/javascript"></script>
 

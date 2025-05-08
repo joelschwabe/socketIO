@@ -5,7 +5,8 @@ You'll need nodejs installed, then run these commands in the root folder:
 > npm install --save express@4.15.2
 >
 > npm install --save socket.io
-
+> 
+> npm install --save comfy-ui-client
 After that's done, just run this to get the server started:
 
 > node index.js

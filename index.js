@@ -1,10 +1,14 @@
-var express = require('express'),
+const express = require('express'),
 	path = require('path'),
 	app = express();
-app.use(express.static('public'));
-var http = require('http').createServer(app);
-var io = require('socket.io')(http);
-var tictac = require('./tictac');
+	
+app.use(express.static('public', {dotfiles:'allow'}));
+//app.use(express.static( __dirname+'/static', {dotfiles:'allow'} ));
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+const comfyUIClient = require('comfy-ui-client');
+const util = require('util');
+const tictac = require('./tictac');
 
 const port = 3000;
 const minUsersPerGameRoom = 2;
@@ -30,15 +34,79 @@ const gameStatus = {
 const gameType = {
 		battleship: 'battleship',
 		paint: 'paint',
-		tictac: 'tictac'
+		tictac: 'tictac',
+		imggen: 'imggen'
 	};		
 const playerStatus = {
 		idle: 'idle',
 		ready: 'ready',
 		playing: 'playing'
 	};
+
+var workflow = {
+	'3': {
+		class_type: 'KSampler',
+		inputs: {
+			cfg: 3,
+			denoise: 1,
+			latent_image: ['5', 0],
+			model: ['4', 0],
+			negative: ['7', 0],
+			positive: ['6', 0],
+			sampler_name: 'euler',
+			scheduler: 'normal',
+			seed: 1,
+			steps: 8,
+		},
+	},
+	'4': {
+		class_type: 'CheckpointLoaderSimple',
+		inputs: {
+			ckpt_name: 'sdXLL_pony_cabbalio_v2_4S.safetensors',
+		},
+	},
+	'5': {
+		class_type: 'EmptyLatentImage',
+		inputs: {
+			batch_size: 1,
+			height: 1024,
+			width: 1024,
+		},
+	},
+	'6': {
+		class_type: 'CLIPTextEncode',
+		inputs: {
+			clip: ['4', 1],
+			text: 'masterpiece best quality',
+		},
+	},
+	'7': {
+		class_type: 'CLIPTextEncode',
+		inputs: {
+			clip: ['4', 1],
+			text: '',
+		},
+	},
+	'8': {
+		class_type: 'VAEDecode',
+		inputs: {
+			samples: ['3', 0],
+			vae: ['4', 2],
+		},
+	},
+	'9': {
+		class_type: 'SaveImage',
+		inputs: {
+			filename_prefix: 'ComfyUI',
+			images: ['8', 0],
+		},
+	},
+};
+
+	
 const defaultAvatar = 'images/avatar.png';
 const serverAvatar = 'images/server.png';
+
 // Express Middleware for serving static files
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -56,7 +124,7 @@ io.on('connection', function(socket){
 
 	socket.on('reconnect', function(socket){
 		console.log("reconnected:");
-		console.log(socket);
+		debugPrint(socket);
 	});
 
 	socket.on('disconnect', function(){
@@ -122,8 +190,10 @@ io.on('connection', function(socket){
 				setupTicTac(msg);
 			}else if(socket.adapter.rooms[msg.room].gameType == gameType.battleship){
 				setupBattleship(msg);
+			}else if(socket.adapter.rooms[msg.room].gameType == gameType.imggen){
+				setupImggen(msg);
 			}else{
-				io.to(msg.room).emit('start_game', msg); 
+				//io.to(msg.room).emit('start_game', msg); 
 			}
 			socket.adapter.rooms[msg.room].roomStatus = gameStatus.playing;
 			io.emit('users_rooms_list', userList, socket.adapter.rooms);
@@ -164,19 +234,21 @@ io.on('connection', function(socket){
 		gameData.turnMax = usersArray.length-1; //zero index
 		var ticTacGame = newGame(msg.room,socket.adapter.rooms[msg.room].gameType, usersObj, gameData );
 		activeGamesData[msg.room] = ticTacGame;
-		console.log(activeGamesData);
-		io.to(msg.room).emit('start_game', msg); 
-		message = "It is " + usersObj[usersArray[0]].name + "'s turn ( " + usersObj[usersArray[0]].icon + " )";
+		debugPrint(activeGamesData);
+		io.to(msg.room).emit('start_tictac', msg); 
+		message = "The game has started!";
 		io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+		message2 = "It is " + usersObj[usersArray[0]].name + "'s turn ( " + usersObj[usersArray[0]].icon + " )";
+		io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message2));
 	}
-
+	
 	setupBattleship = function(msg){
-		console.log("TODO: setupbattleship");
+		console.log("TODO: setup battleship");
 	};
 
 	socket.on('tic_click', function(msg){
 		var ticTacGame = activeGamesData[msg.room];
-		console.log(ticTacGame);
+		debugPrint(ticTacGame);
 		if(ticTacGame.game.turn == ticTacGame.users[msg.userId].turn){ //has to be your turn
 			if(ticTacGame.game.matrix[msg.y][msg.x] == ''){ //has to be empty square
 				ticTacGame.game.matrix[msg.y][msg.x] = ticTacGame.users[msg.userId].icon; //fill square
@@ -280,11 +352,11 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('debug server', function(){
-		console.log(socket.adapter.rooms);
-		console.log(userList);
-		console.log(gamelist);
-		console.log(roomSecret);
-		console.log(activeGamesData);
+		debugPrint(socket.adapter.rooms);
+		debugPrint(userList);
+		debugPrint(gamelist);
+		debugPrint(roomSecret);
+		debugPrint(activeGamesData);
 	});
 	
 	socket.on('assign_name', function(msg, avatar){
@@ -323,11 +395,6 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('chat_message', function(msg){
-/* 		console.log('socketId: ' + msg.id);
-		console.log(' -userId: ' + msg.userId);
-		console.log('   -username: ' + msg.username);
-		console.log('    -room: ' + msg.room);
-		console.log('     -message: ' + msg.msg); */
 		if(msg.room != serverRoom){
 			io.to(msg.room).emit('chat_message', msg);
 		}
@@ -338,6 +405,7 @@ io.on('connection', function(socket){
 	});
 	
 	socket.on('join_room', function(room, fromRoom, type, pword,gType){
+		console.log("called join_room");
 		if(!room){
 			var message = "Must have a room name.";
 			io.to(socket.id).emit('chat_message', newMsg(serverName, serverName,fromRoom,message));
@@ -437,7 +505,7 @@ io.on('connection', function(socket){
 			}
 		}
 		io.emit('users_rooms_list', userList, socket.adapter.rooms);
-		console.log(socket.adapter.rooms);
+		debugPrint(socket.adapter.rooms);
 	});
 
 	socket.on('leave_room', function(room){
@@ -450,7 +518,7 @@ io.on('connection', function(socket){
 			console.log('a user left_room:'+ room);
 			var message = getName(socket) + " left " + room;
 			io.to(room).emit('chat_message', newMsg(serverName, serverName,room,message));
-			console.log(socket.adapter.rooms);
+			debugPrint(socket.adapter.rooms);
 			io.emit('users_rooms_list', userList, socket.adapter.rooms);
 		}
 	});
@@ -488,7 +556,202 @@ io.on('connection', function(socket){
 		io.to(socket.id).emit('force_name_update', msg.username);
 		return msg;
 	}
+
+	class User {
+		constructor(id, name, score, votes,prompt,image) {
+		  this.id = id;
+		  this.name = name;
+		  this.score = score;
+		  this.votes = votes;
+		  this.prompt = prompt;
+		  this.image = image;
+		}
+	}
+
+	class Round {
+		constructor(roundid, roundtime, roundcomplete) {
+			this.roundid = roundid;
+			this.roundtime = roundtime;
+			this.roundcomplete = roundcomplete;
+		  }
+	}
+	class SloppedRound extends Round{
+		constructor(roundid, roundtime, roundcomplete, userpair, roundTheme, mysteryWords) {
+			super(roundid, roundtime, roundcomplete);
+			this.roundTheme = roundTheme;
+			this.mysteryWords = mysteryWords;  //three words comma separated?
+			this.userpair = userpair;
+		  }
+	}
+
+	setupImggen = function(msg){
+		var gameData = new Object();
+		var usersArr = [];
+		var usersArray = Object.keys(socket.adapter.rooms[msg.room].sockets);
+		for(var i=0;i < usersArray.length; i++){
+			for(var k =0; k < userList.length; k++){
+				console.log(userList[k].id + " | " + usersArray[i] );
+				if(userList[k].id==usersArray[i]){
+					usersArr.push(new User(userList[k].id,userList[k].username,0,0))
+				}
+			}
+		}
+		//Do setup here first
+		var userPairsArr = generateUserPairs(usersArr);
+		var sloppedRounds = [];
+		for(var i=0;i < userPairsArr.length; i++){
+			var theme = getTheme();
+			var mysteryWords = getMysteryWords();
+			sloppedRounds.push(new SloppedRound (i,60,false,userPairsArr[i], theme, mysteryWords));
+		}
+		gameData.roundTime = 60;
+		gameData.roundList = sloppedRounds;
+		gameData.roundIndex = 0;
+		var imggenGame = newGame(msg.room,socket.adapter.rooms[msg.room].gameType, usersArr, gameData );
+		activeGamesData[msg.room] = imggenGame;
+		debugPrint(activeGamesData);
+		io.to(msg.room).emit('start_imggen', msg); 
+		message = "The game has started!";
+		io.to(msg.room).emit('chat_message', newMsg(serverName, serverName,msg.room,message));
+	};
+
+	//Take in a list of users, create pairings of them, return an array of UserPairs
+	generateUserPairs = function (users) {
+		var pairsArray = [];
+	  
+		for (let i = 0; i < users.length; i++) {
+		  for (let j = i + 1; j < users.length; j++) {
+			pairsArray.push([users[i],users[j]]);
+		  }
+		}
+	    debugPrint(pairsArray);
+		return pairsArray;
+	  }
+
+
+
+
+
+
+	socket.on('slopped_round_prompt', function(msg){
+		//start timer, force update on tick
+		//tell client to update to new screen
+		//end round when  timer expires (or both prompts are in tbd)
+		var sloppedGame = activeGamesData[msg.room];
+		debugPrint(sloppedGame);
+		msg.promptWords = sloppedGame.game.roundList[sloppedGame.game.roundIndex].mysteryWords;
+		msg.promptTheme = sloppedGame.game.roundList[sloppedGame.game.roundIndex].roundTheme;
+		io.to(msg.room).emit('start_prompting', msg);
+		var countdown = sloppedGame.game.roundTime;
+
+		const interval = setInterval(() => {
+			countdown--;
+			io.to(msg.room).emit('countdownTickPrompt', countdown);
+	  
+			if (countdown <= 0) {
+			  clearInterval(interval);
+			  io.to(msg.room).emit('roundFinished', msg);
+
+			}
+		}, 1000);
+	});
+
+	socket.on('submit_prompt' , async function(msg){
+
+		var sloppedGame = activeGamesData[msg.room];
+		debugPrint(sloppedGame);
+
+		var prompt = msg.msg;
+		console.log("submit_prompt:");
+		console.log(prompt);
+
+		var competitors = sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair
+		var userIndex = null;
+
+		for(var i=0;i < competitors.length; i++){
+			if(competitors[i].name == msg.username){
+				userIndex = i;
+			}
+		}
+		sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[userIndex].prompt = prompt;
+
+		const serverAddress = '192.168.1.88:8188';
+		const clientId = msg.id;
+		const client = new comfyUIClient.ComfyUIClient(serverAddress, clientId);
+
+		// Connect to server
+		await client.connect();
+		workflow['6'].inputs.text = prompt;
+		// Generate images
+		var images = await client.getImages(workflow);
+		//var images = await client.queuePrompt(workflow);
+		const outputDir = './public/images/gens/';
+
+		await client.saveImages(images, outputDir);
+		debugPrint(images);
+
+		var uri = '/images/gens/' + images[9][0].image.filename;
+		sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[userIndex].image = uri;
+		debugPrint(sloppedGame);
+
+		if(sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[0].image!=null
+			&& sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[1].image!=null
+		){
+			triggerVotingState(msg);
+		}
+		await client.disconnect();
+	});
+
+	triggerVotingState = function(msg){
+		var sloppedGame = activeGamesData[msg.room];
+		debugPrint(sloppedGame);
+		msg.image1 = sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[0].image;
+		msg.image2 = sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[1].image; 
+		msg.promptWords = sloppedGame.game.roundList[sloppedGame.game.roundIndex].mysteryWords;
+		msg.promptTheme = sloppedGame.game.roundList[sloppedGame.game.roundIndex].roundTheme;
+		io.to(msg.room).emit('voteSetup', msg);
+		var countdown2 = 15;
+
+		const interval2 = setInterval(() => {
+			countdown2--;
+			io.to(msg.room).emit('countdownTickVote', countdown2);
+	  
+			if (countdown2 <= 0) {
+			  clearInterval(interval2);
+
+			  if(sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[0].votes >sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[1].votes){
+				sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[0].score += 1;
+				msg.winner = sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[0].name;
+			  }else{
+				sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[1].score += 1;
+				msg.winner = sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[1].name;
+			  }
+			  io.to(msg.room).emit('voteFinished', msg);
+
+			}
+		}, 1000);
+	}
+
+	socket.on('vote' , function(msg){
+		var sloppedGame = activeGamesData[msg.room];
+		var vote = msg.msg;
+		sloppedGame.game.roundList[sloppedGame.game.roundIndex].userpair[0].votes++;
+		console.log("voted for:" + msg.msg);
+
+	});
+
 });
+
+
+getTheme = function(){
+	//TODO
+	return "Outer Space";
+}
+
+getMysteryWords = function (){
+	//TODO
+	return "pineapple,screwdriver,balloon";
+}
 
 updateGameList = function(socket){
 	gamelist = [];
@@ -507,7 +770,7 @@ updateGameList = function(socket){
 
 addUser = function(msg, avatar){
 	var newUsr = newUser(msg.id, msg.userId, msg.username, avatar);
-	console.log(newUsr);
+	debugPrint(newUsr);
 	var existsId = false;
 	var existsUuid = false;
 	var dupName = checkForDupName(msg);
@@ -543,6 +806,10 @@ addUser = function(msg, avatar){
 	console.log(userList.length + " users exist");
 	return newUsr;
 }
+
+debugPrint = function (obj, label = '') {
+	console.log(label, util.inspect(obj, { depth: null, colors: true }));
+  }
 
 removeUser = function(id){
 	console.log("remove: "+id);

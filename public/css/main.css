@@ -130,6 +130,12 @@ form button {
 #ticTacControls{
 	padding-top: 10px;
 }
+#gameControls{
+	padding-top: 10px;
+}
+#imgGenControls{
+	padding-top: 10px;
+}
 #rooms {
     top: 0px;
 }
@@ -378,3 +384,70 @@ form button {
     font-stretch: ultra-expanded;
  }
  
+ 
+.sloppedSplashScreen {
+    font-family: Arial, sans-serif;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .sloppedLogo {
+	max-width: 100%;
+	height: auto;
+	margin-bottom: 16px;
+  }
+  
+  .sloppedDesc {
+	margin-bottom: 5px;
+	font-size: 24px;
+  }
+  
+  .sloppedStartButton {
+	padding: 14px 24px;
+	font-size: 20px;
+	color: white;
+	background-color: #84b945;
+	border: none;
+	border-radius: 10px;
+	cursor: pointer;
+	width: 40%;
+  }
+  
+  .sloppedStartButton:hover {
+	background-color: #0056b3;
+  }
+
+  #promptForm{
+	width: 50%;
+	height: 300px;
+  }
+
+  .sloppedImage{
+	width: 350px;
+    border: solid;
+    border-color: black;
+    border-radius: 30px;
+  }
+
+  .sloppedVoteButton{
+	padding: 10px 24px;
+    font-size: 30px;
+    color: white;
+    background-color: #84b945;
+    border-radius: 10px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 30px;
+  }
+
+  .sloppedVoteButton:hover {
+	background-color: #0056b3;
+  }
+
+  .sloppedVoteTable{
+	display: initial;
+  }
